@@ -1,0 +1,200 @@
+{% extends "analytics/admin_base.html" %}
+
+{% block title %}Command Center — Evolvée Radiance{% endblock %}
+
+{% block head_extra %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+{% endblock %}
+
+{% block content %}
+<div class="analytics-header">
+    <div>
+        <h1>Partnership Program</h1>
+        <p class="muted">Track partner growth, scan activity, conversions, and audience regions.</p>
+    </div>
+    <div class="analytics-actions">
+        <form method="get" class="filter-form">
+            <select name="days" onchange="this.form.submit()">
+                <option value="7" {% if selected_days == 7 %}selected{% endif %}>Last 7 days</option>
+                <option value="30" {% if selected_days == 30 %}selected{% endif %}>Last 30 days</option>
+                <option value="90" {% if selected_days == 90 %}selected{% endif %}>Last 90 days</option>
+            </select>
+            <select name="event" onchange="this.form.submit()">
+                <option value="">All events</option>
+                {% for value, label in event_types %}
+                <option value="{{ value }}" {% if selected_event == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </form>
+        <a href="{% url 'analytics:export_creators' %}" class="btn-accent">Export Creators (Excel)</a>
+        <a href="{% url 'analytics:export_activity' %}?days={{ selected_days }}" class="btn-secondary">Export Activity CSV</a>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card"><span class="stat-label">Approved Partners</span><span class="stat-value">{{ kpis.approved_partners }}</span><span class="stat-sub">{{ kpis.pending_partners }} pending</span></div>
+    <div class="stat-card"><span class="stat-label">QR Scans</span><span class="stat-value">{{ kpis.total_clicks }}</span><span class="stat-sub">{{ kpis.recent_clicks }} last 30d</span></div>
+    <div class="stat-card"><span class="stat-label">Conversions</span><span class="stat-value">{{ kpis.total_conversions }}</span><span class="stat-sub">{{ kpis.conversion_rate }}% rate</span></div>
+    <div class="stat-card"><span class="stat-label">Revenue</span><span class="stat-value">${{ kpis.total_revenue }}</span><span class="stat-sub">{{ kpis.total_sales_count }} sales</span></div>
+    <div class="stat-card highlight"><span class="stat-label">Commissions</span><span class="stat-value">${{ kpis.total_commission }}</span><span class="stat-sub">${{ kpis.pending_commission }} pending</span></div>
+</div>
+
+<div class="two-col">
+    <div class="card chart-card">
+        <h2>Program Trends</h2>
+        <div class="chart-wrap tall">
+            <canvas id="programChart"></canvas>
+        </div>
+    </div>
+    <div class="card">
+        <h2>Event Breakdown</h2>
+        <ul class="event-breakdown">
+            {% for item in event_counts %}
+            <li><span>{{ item.event_type }}</span><strong>{{ item.count }}</strong></li>
+            {% empty %}
+            <li class="muted">No events in this period.</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+
+<div class="two-col">
+    <div class="card table-card">
+        <h2>Top Scan Regions</h2>
+        <p class="muted">Where audiences are scanning QR codes — city, state/region, country.</p>
+        <div class="table-scroll">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Location</th>
+                        <th>Scans</th>
+                        <th>Conv.</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in region_breakdown %}
+                    <tr>
+                        <td>{{ row.location }}</td>
+                        <td>{{ row.scans }}</td>
+                        <td>{{ row.conversions }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3" class="muted">No regional scan data yet. Locations appear after QR scans from public IPs.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Scans by Country</h2>
+        <ul class="event-breakdown">
+            {% for row in country_breakdown %}
+            <li><span>{{ row.country }}</span><strong>{{ row.scans }} scans · {{ row.conversions }} conv.</strong></li>
+            {% empty %}
+            <li class="muted">No country data yet.</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+
+<div class="two-col">
+    <div class="card table-card">
+        <h2>Partner Leaderboard</h2>
+        <p class="muted">Click a partner to view their full performance and audience regions.</p>
+        <div class="table-scroll">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Partner</th>
+                        <th>Location</th>
+                        <th>Scans</th>
+                        <th>Conv.</th>
+                        <th>Revenue</th>
+                        <th>Commission</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in leaderboard %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'analytics:partner_detail' row.id %}" class="link-btn">{{ row.partner_name }}</a>
+                            <br><span class="muted">{{ row.partner_code }}</span>
+                        </td>
+                        <td>{{ row.location }}</td>
+                        <td>{{ row.clicks }}</td>
+                        <td>{{ row.conversions }}</td>
+                        <td>${{ row.revenue }}</td>
+                        <td>${{ row.commission }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="muted">No approved partners yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card table-card">
+        <h2>Activity Feed</h2>
+        <p class="muted">Applications, scans, sales, payouts, and webhooks.</p>
+        <div class="table-scroll activity-feed">
+            <table class="data-table compact">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Event</th>
+                        <th>Partner</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for activity in activities %}
+                    <tr>
+                        <td>{{ activity.created_at|date:"M d, H:i" }}</td>
+                        <td><span class="event-pill">{{ activity.get_event_type_display }}</span></td>
+                        <td>
+                            {% if activity.partner %}
+                            <a href="{% url 'analytics:partner_detail' activity.partner.id %}" class="link-btn">{{ activity.partner.partner_code }}</a>
+                            {% else %}—{% endif %}
+                        </td>
+                        <td>{{ activity.description|default:"—" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="muted">No activity recorded yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ chart_data|json_script:"program-chart-data" }}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const chartEl = document.getElementById("programChart");
+    const chartData = JSON.parse(document.getElementById("program-chart-data").textContent);
+    if (!chartEl) return;
+
+    new Chart(chartEl, {
+        type: "bar",
+        data: {
+            labels: chartData.labels,
+            datasets: [
+                { label: "Scans", data: chartData.clicks, backgroundColor: "#c9a87c" },
+                { label: "Sales", data: chartData.sales, backgroundColor: "#2d6a4f" },
+                { label: "Revenue ($)", data: chartData.revenue, backgroundColor: "#5c6b73" },
+            ],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: "bottom" } },
+            scales: { y: { beginAtZero: true } },
+        },
+    });
+});
+</script>
+{% endblock %}

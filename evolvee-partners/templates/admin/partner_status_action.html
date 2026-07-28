@@ -1,0 +1,21 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+
+<p>The following partners will be <strong>{{ action_label }}</strong>. You can include an optional message that will be emailed and shown in their portal.</p>
+
+<ul>
+    {% for partner in partners %}
+        <li>{{ partner.partner_name }} ({{ partner.partner_code }}) — {{ partner.get_status_display }}</li>
+    {% endfor %}
+</ul>
+
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <input type="hidden" name="action" value="{{ action_name }}">
+    <input type="submit" name="apply" value="Confirm" class="default">
+    <a href="{% url 'admin:partners_partner_changelist' %}">Cancel</a>
+</form>
+{% endblock %}

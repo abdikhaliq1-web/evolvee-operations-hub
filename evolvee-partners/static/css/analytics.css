@@ -1,0 +1,45 @@
+.analytics-body { background: #f3f1ee; }
+.analytics-main { padding-top: 1.5rem; }
+.site-header--admin .site-nav a.active { color: var(--text); font-weight: 600; }
+.analytics-actions .btn-secondary {
+    display: inline-block;
+    padding: 0.6rem 1rem;
+    margin-top: 0;
+}
+.analytics-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+.analytics-actions {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.filter-form select {
+    padding: 0.55rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-right: 0.5rem;
+}
+.event-breakdown { list-style: none; padding: 0; margin: 0; }
+.event-breakdown li {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.92rem;
+}
+.event-pill {
+    display: inline-block;
+    padding: 0.15rem 0.45rem;
+    border-radius: 6px;
+    background: #f0ece6;
+    font-size: 0.78rem;
+}
+.activity-feed { max-height: 480px; }
+.data-table.compact td, .data-table.compact th { font-size: 0.82rem; }

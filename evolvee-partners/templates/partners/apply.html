@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Apply — Evolvée Radiance Partners{% endblock %}
+
+{% block head_extra %}
+<script src="/static/js/location-cascade.js" defer></script>
+{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+    <h1>Join the Partner Program</h1>
+    <p class="muted">Earn commissions by sharing Evolvée Radiance with your audience. Fast application — get your QR code once approved.</p>
+</section>
+
+<section class="auth-card">
+    <form method="post" class="form" data-location-form data-location-initial-id="apply-location-initial">
+        {% csrf_token %}
+        {{ location_initial|json_script:"apply-location-initial" }}
+        <div class="form-row">
+            <label>First name</label>
+            <input type="text" name="first_name" required>
+        </div>
+        <div class="form-row">
+            <label>Last name</label>
+            <input type="text" name="last_name" required>
+        </div>
+        <div class="form-row">
+            <label>Email</label>
+            <input type="email" name="email" required>
+        </div>
+        <div class="form-row">
+            <label>Password</label>
+            <input type="password" name="password" minlength="8" required>
+        </div>
+        <div class="form-row">
+            <label>Display / brand name</label>
+            <input type="text" name="partner_name" required>
+        </div>
+        <div class="form-row">
+            <label>Social media handle <span class="required">*</span></label>
+            <input type="text" name="social_handle" placeholder="@yourhandle" required>
+        </div>
+
+        <fieldset class="location-group">
+            <legend>Where you're based</legend>
+            {% include "partners/includes/location_fields.html" %}
+        </fieldset>
+
+        <div class="form-row">
+            <label>Bio (optional)</label>
+            <textarea name="bio" rows="3"></textarea>
+        </div>
+        <div class="form-row">
+            <label>Why do you want to partner? (optional)</label>
+            <textarea name="application_notes" rows="3"></textarea>
+        </div>
+        <p class="muted">After approval, you can add your payout details from your profile.</p>
+        <button type="submit" class="btn-ghost">Submit Application</button>
+    </form>
+
+    <p class="muted center">Already a partner? <a href="{% url 'partners:login' %}">Log in</a></p>
+</section>
+{% endblock %}

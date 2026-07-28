@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Login — Evolvée Radiance{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+    <h1>Admin Login</h1>
+    <p class="muted">Sign in with your staff account to access the Command Center and partnership analytics.</p>
+</section>
+
+<section class="auth-card auth-card--admin">
+    <form method="post" class="form">
+        {% csrf_token %}
+        <div class="form-row">
+            <label>Email</label>
+            <input type="text" name="username" required autofocus>
+        </div>
+        <div class="form-row">
+            <label>Password</label>
+            <input type="password" name="password" required>
+        </div>
+        <button type="submit" class="btn-ghost">Log In to Command Center</button>
+    </form>
+    <p class="muted center">Partner or influencer? <a href="{% url 'partners:login' %}">Partner login</a></p>
+</section>
+{% endblock %}

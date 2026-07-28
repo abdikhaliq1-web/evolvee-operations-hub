@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}My Profile — Evolvée Radiance{% endblock %}
+
+{% block head_extra %}
+<script src="/static/js/location-cascade.js" defer></script>
+<script src="/static/js/payment-fields.js" defer></script>
+{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+    <h1>My Profile</h1>
+    <p class="muted">Manage your personal details, payout information, and account messages.</p>
+</section>
+
+<div class="profile-layout">
+    <aside class="card profile-summary">
+        <div class="profile-avatar" aria-hidden="true">{{ partner.display_initials }}</div>
+        <h2 class="section-heading">{{ partner.partner_name }}</h2>
+        <p class="muted">{{ user_obj.email }}</p>
+        <p><strong>{{ partner.social_handle }}</strong></p>
+        {% if partner.is_active %}
+        <p class="muted">Creator ID: {{ partner.partner_code }}</p>
+        <p class="muted">Discount code: {{ partner.discount_code }}</p>
+        {% endif %}
+        <p class="muted">{{ partner.location_label }}</p>
+        <span class="status-badge status-{{ partner.status }}">{{ partner.get_status_display }}</span>
+    </aside>
+
+    <div class="profile-main">
+        <div class="card">
+            <h2 class="section-heading">Personal details</h2>
+            <p class="muted">Your display name and social handle were set at signup. Update your location and bio below.</p>
+            <dl class="detail-list">
+                <div><dt>Name</dt><dd>{{ user_obj.first_name }} {{ user_obj.last_name }}</dd></div>
+                <div><dt>Display / brand name</dt><dd>{{ partner.partner_name }}</dd></div>
+                <div><dt>Social handle</dt><dd>{{ partner.social_handle }}</dd></div>
+                <div><dt>Email</dt><dd>{{ user_obj.email }}</dd></div>
+            </dl>
+            <form method="post" class="form" data-location-form data-location-initial-id="profile-location-initial">
+                {% csrf_token %}
+                {{ location_initial|json_script:"profile-location-initial" }}
+                <input type="hidden" name="section" value="profile">
+                <fieldset class="location-group">
+                    <legend>Location</legend>
+                    {% include "partners/includes/location_fields.html" %}
+                </fieldset>
+                {{ profile_form.as_p }}
+                <button type="submit" class="btn-ghost">Save profile</button>
+            </form>
+        </div>
+
+        {% if partner.is_active %}
+        <div class="card">
+            <h2 class="section-heading">Payment details</h2>
+            <p class="muted">Fields change based on your payout method and country so our team receives the correct format automatically.</p>
+            {% if not partner.country_code %}
+            <p class="notice-inline notice-inline--warning">Save your location above first — payout fields depend on your country.</p>
+            {% endif %}
+            {% if partner.has_payment_details %}
+                <p class="notice-inline">Payout info on file{% if partner.payment_details_updated_at %} · updated {{ partner.payment_details_updated_at|date:"M j, Y" }}{% endif %}</p>
+                <pre class="payment-summary">{{ partner.payment_details }}</pre>
+            {% else %}
+                <p class="notice-inline notice-inline--warning">Please add your payment details to receive payouts.</p>
+            {% endif %}
+            <form method="post" class="form" data-payment-form data-payment-country="{{ partner.country_code }}" data-payment-initial-id="profile-payment-initial">
+                {% csrf_token %}
+                {{ payment_initial|json_script:"profile-payment-initial" }}
+                <input type="hidden" name="section" value="payment">
+                {{ payment_form.as_p }}
+                <div data-payment-fields class="payment-dynamic-fields">
+                    <p class="muted">Select a payout method to see the required fields.</p>
+                </div>
+                <button type="submit" class="btn-ghost">Save payment details</button>
+            </form>
+        </div>
+        {% else %}
+        <div class="card notice">
+            <h2 class="section-heading">Payment details</h2>
+            <p>Once your application is approved, you can add your payout method here.</p>
+        </div>
+        {% endif %}
+
+        <div class="card" id="messages">
+            <h2 class="section-heading">Messages from Evolvée Radiance</h2>
+            {% if notifications %}
+            <ul class="notification-list">
+                {% for note in notifications %}
+                <li class="notification-item{% if not note.is_read %} notification-item--unread{% endif %}">
+                    <div class="notification-header">
+                        <strong>{{ note.title }}</strong>
+                        <span class="muted">{{ note.created_at|date:"M j, Y g:i A" }}</span>
+                    </div>
+                    {% if note.message %}
+                    <p>{{ note.message|linebreaksbr }}</p>
+                    {% endif %}
+                    {% if not note.is_read %}
+                    <form method="post" action="{% url 'partners:mark_notification_read' note.id %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-secondary">Mark as read</button>
+                    </form>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="muted">No messages yet. Updates about your application status will appear here.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Evolvée Radiance Partners{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=Great+Vibes&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/partner.css">
+    {% block head_extra %}{% endblock %}
+</head>
+<body>
+    <header class="site-header">
+        <div class="container header-inner">
+            <a href="{% url 'partners:dashboard' %}" class="brand">
+                <img src="/static/img/logo-placeholder.svg" alt="" class="brand-icon">
+                <span class="brand-name">Evolvée Radiance</span>
+            </a>
+            <button class="nav-toggle" aria-label="Toggle navigation" onclick="document.body.classList.toggle('nav-open')">☰</button>
+            <nav class="site-nav">
+                <a href="{{ main_website_url }}">Shop</a>
+                {% if user.is_authenticated %}
+                    <a href="{% url 'partners:dashboard' %}">Dashboard</a>
+                    {% if user.partner_profile and user.partner_profile.is_active %}
+                    <a href="{% url 'partners:assets' %}">Assets</a>
+                    {% endif %}
+                    {% if user.partner_profile %}
+                    <div class="user-menu">
+                        <button type="button" class="user-menu-toggle" aria-expanded="false" aria-haspopup="true" onclick="this.parentElement.classList.toggle('open')">
+                            <span class="user-avatar" aria-hidden="true">{{ user.partner_profile.display_initials }}</span>
+                            <span class="user-menu-name">{{ user.partner_profile.partner_name }}</span>
+                            {% if unread_notification_count %}
+                            <span class="user-menu-badge">{{ unread_notification_count }}</span>
+                            {% endif %}
+                        </button>
+                        <div class="user-menu-dropdown">
+                            <a href="{% url 'partners:profile' %}">My profile</a>
+                            {% if unread_notification_count %}
+                            <a href="{% url 'partners:profile' %}#messages">Messages ({{ unread_notification_count }})</a>
+                            {% endif %}
+                            <a href="{% url 'partners:logout' %}">Logout</a>
+                        </div>
+                    </div>
+                    {% else %}
+                    <a href="{% url 'partners:logout' %}">Logout</a>
+                    {% endif %}
+                {% else %}
+                    <a href="{% url 'partners:apply' %}">Apply</a>
+                    <a href="{% url 'partners:login' %}">Login</a>
+                    <a href="{% url 'partners:admin_login' %}" class="nav-admin">Admin</a>
+                {% endif %}
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        {% if messages %}
+            <div class="messages">
+                {% for message in messages %}
+                    <div class="message {{ message.tags }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <p>&copy; {{ brand_name|default:"Evolvée Radiance" }} — Partner Program</p>
+            <p><a href="{{ main_website_url }}" class="link-btn">Visit main website</a></p>
+            {% if not user.is_authenticated %}
+            <p><a href="{% url 'partners:admin_login' %}" class="link-btn">Staff / admin login</a></p>
+            {% endif %}
+        </div>
+    </footer>
+    <script>
+        document.addEventListener("click", function (event) {
+            document.querySelectorAll(".user-menu.open").forEach(function (menu) {
+                if (!menu.contains(event.target)) {
+                    menu.classList.remove("open");
+                }
+            });
+        });
+    </script>
+</body>
+</html>

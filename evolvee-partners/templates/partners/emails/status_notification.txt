@@ -1,0 +1,12 @@
+Hello {{ partner.partner_name }},
+
+{{ body }}
+
+Creator ID: {{ partner.partner_code|default:"—" }}
+{% if partner.discount_code %}Discount code: {{ partner.discount_code }}{% endif %}
+Status: {{ partner.get_status_display }}
+
+View your partner portal: {{ portal_url }}
+Update your profile: {{ profile_url }}
+
+— {{ brand_name }} Partner Program

@@ -1,0 +1,34 @@
+<div class="location-fields">
+    <div class="form-row">
+        <label>Region / continent <span class="required">*</span></label>
+        <select name="continent" required>
+            <option value="">Select region…</option>
+            {% for continent in continents %}
+            <option value="{{ continent }}">{{ continent }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="form-row">
+        <label>Country <span class="required">*</span></label>
+        <select name="country_code" required>
+            <option value="">Select country…</option>
+        </select>
+    </div>
+    <div class="form-row hidden" data-location-row="region">
+        <label>State / province / region</label>
+        <select name="region_code">
+            <option value="">Select state / region…</option>
+        </select>
+    </div>
+    <div class="form-row hidden" data-location-row="city">
+        <label>City <span class="required">*</span></label>
+        <select name="city_select">
+            <option value="">Select city…</option>
+        </select>
+    </div>
+    <div class="form-row hidden" data-location-row="city-custom">
+        <label>City name <span class="required">*</span></label>
+        <input type="text" name="city_custom" placeholder="Enter your city">
+    </div>
+    <input type="hidden" name="city" value="">
+</div>
