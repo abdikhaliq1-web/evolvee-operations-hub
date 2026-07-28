@@ -7,6 +7,7 @@ const router = express.Router();
 
 router.use(authenticate, requirePermission('users'));
 
+// returns the most recent audit log entries
 router.get('/', asyncRoute(async (req, res) => {
     const result = await query(
         'SELECT * FROM audit_log ORDER BY created_at DESC LIMIT 200'

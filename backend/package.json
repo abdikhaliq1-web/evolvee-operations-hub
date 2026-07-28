@@ -1,6 +1,6 @@
 {
   "name": "operations-hub-backend",
-  "version": "0.3.0",
+  "version": "0.3.3",
   "description": "Evolvee Radiance Operations Hub Backend",
   "main": "src/server.js",
   "type": "commonjs",

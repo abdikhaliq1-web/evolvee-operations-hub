@@ -12,6 +12,7 @@ router.param('id', validateId);
 const STATUSES = ['ordered', 'in_production', 'shipped', 'received', 'cancelled'];
 
 // null/'' means "not set" (allowed); any provided value must be a positive number.
+// checks quantity is a positive number, unless it's blank/not set
 function invalidQuantity(quantity) {
     if (quantity == null || quantity === '') {
         return false;
@@ -19,6 +20,7 @@ function invalidQuantity(quantity) {
     return !(Number(quantity) > 0);
 }
 
+// lists recent production runs with manufacturer and product names
 router.get('/', asyncRoute(async (req, res) => {
     const sql =
         'SELECT pr.*, m.name AS manufacturer_name, p.sku, p.name AS product_name ' +
@@ -33,6 +35,7 @@ router.get('/', asyncRoute(async (req, res) => {
     res.json({ runs: result.rows });
 }));
 
+// creates a new production run
 router.post('/', asyncRoute(async (req, res) => {
     const body = req.body || {};
     const manufacturerId = body.manufacturer_id;
@@ -78,6 +81,7 @@ router.post('/', asyncRoute(async (req, res) => {
     res.status(201).json({ run: result.rows[0] });
 }));
 
+// updates only the production run fields present in the request body
 router.patch('/:id', asyncRoute(async (req, res) => {
     const body = req.body || {};
     const status = body.status;

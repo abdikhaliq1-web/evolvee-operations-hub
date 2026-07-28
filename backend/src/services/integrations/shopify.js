@@ -3,6 +3,7 @@ const { callExternal, withSync, cacheAll } = require('../apiClient');
 const { aggregateCustomerPurchases } = require('../customerPurchases');
 const sample = require('../sampleData/shopify.json');
 
+// builds the auth headers needed for shopify admin api calls
 function headers() {
     return {
         'X-Shopify-Access-Token': env.shopify.adminToken,
@@ -10,6 +11,7 @@ function headers() {
     };
 }
 
+// builds the base shopify admin api url for this store
 function base() {
     return 'https://' + env.shopify.storeDomain + '/admin/api/' + env.shopify.apiVersion;
 }
@@ -49,6 +51,7 @@ async function fetchAllPages(firstUrl, key) {
 }
 
 // off: skip and report ok. sample: bundled JSON. else: live API.
+// gets total units and revenue sold per sku over last 30 days
 async function getSalesOverview() {
     const mode = env.modes.shopify;
 
@@ -94,6 +97,7 @@ async function getSalesOverview() {
     });
 }
 
+// fetches recent orders and groups purchase history per customer
 async function getCustomerPurchases() {
     const mode = env.modes.shopify;
 
@@ -118,6 +122,7 @@ async function getCustomerPurchases() {
     }, {});
 }
 
+// gets top 50 customers by total amount spent
 async function getTopCustomers() {
     const mode = env.modes.shopify;
 
@@ -148,6 +153,7 @@ async function getTopCustomers() {
     });
 }
 
+// gets revenue totals grouped by day for the last month
 async function getDailyRevenue() {
     const mode = env.modes.shopify;
 
@@ -159,7 +165,7 @@ async function getDailyRevenue() {
         const thirtyOneDaysMs = 31 * 864e5;
         const since = new Date(Date.now() - thirtyOneDaysMs).toISOString();
 
-        // financial_status=paid to match getMonthlyRevenue — both revenue views on one basis.
+        // only count paid orders, same as getMonthlyRevenue
         const url =
             base() +
             '/orders.json?status=any' +
@@ -191,6 +197,7 @@ async function getDailyRevenue() {
     });
 }
 
+// gets daily units/revenue trend per sku over the last 30 days
 async function getSalesTrend() {
     const mode = env.modes.shopify;
 
@@ -236,6 +243,7 @@ async function getSalesTrend() {
     }, {});
 }
 
+// fetches all products/variants and merges in their current stock counts
 async function getStockLevels() {
     const mode = env.modes.shopify;
 
@@ -310,6 +318,7 @@ async function getStockLevels() {
     });
 }
 
+// gets order count and total sales for today so far
 async function getTodayOrders() {
     const mode = env.modes.shopify;
 
@@ -354,6 +363,7 @@ const SHIPMENT_STATUS = {
     delivered: 'Delivered'
 };
 
+// builds a shipment tracking list from recent order fulfillments
 async function getTrackings() {
     const mode = env.modes.shopify;
 
@@ -399,6 +409,7 @@ async function getTrackings() {
     });
 }
 
+// gets revenue totals grouped by month for the last year
 async function getMonthlyRevenue() {
     const mode = env.modes.shopify;
 

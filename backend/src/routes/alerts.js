@@ -10,6 +10,7 @@ const router = express.Router();
 router.use(authenticate, requirePermission('alerts'));
 router.param('id', validateId);
 
+// lists reorder alerts, optionally filtered by status
 router.get('/', asyncRoute(async (req, res) => {
     const status = req.query.status;
 
@@ -34,6 +35,7 @@ router.get('/', asyncRoute(async (req, res) => {
     res.json({ alerts: result.rows });
 }));
 
+// updates an alert's status, sets resolved_at when marked resolved
 router.patch('/:id', asyncRoute(async (req, res) => {
     const body = req.body || {};
     const status = body.status;
@@ -72,6 +74,7 @@ router.delete('/:id', asyncRoute(async (req, res) => {
     res.json({ deleted: id });
 }));
 
+// runs the stock check job immediately instead of waiting for cron
 router.post('/check-now', asyncRoute(async (req, res) => {
     const result = await runStockCheck();
     res.json(result);

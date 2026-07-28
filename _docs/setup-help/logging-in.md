@@ -8,11 +8,11 @@ values in `backend/db/seed.js`).
 
 | Email | Role | Sees |
 |---|---|---|
-| `admin@yourdomain.com` | Admin | Everything, including user management |
-| `dev@yourdomain.com` | Developer | Everything except user management |
-| `ops@yourdomain.com` | Operations Manager | Inventory, sales, customers, revenue*, shipping, alerts, manufacturers |
-| `marketing@yourdomain.com` | Marketing | Sales, customers, partner module |
-| `partner@yourdomain.com` | Partner/Ambassador | Partner module only |
+| `owner@evolveeradiance.com` | Admin | Everything, including user management |
+| `dev@evolveeradiance.com` | Developer | Everything except user management |
+| `ops@evolveeradiance.com` | Operations Manager | Inventory, sales, customers, revenue, shipping, alerts, manufacturers |
+| `marketing@evolveeradiance.com` | Marketing | Sales, customers, partner module |
+| `partner@evolveeradiance.com` | Partner/Ambassador | Partner module only |
 
 Log in as a few different users to confirm each role sees the right tiles and nav items.
 

@@ -21,6 +21,7 @@ import ProductionRuns from './pages/ProductionRuns.jsx';
 import Users from './pages/Users.jsx';
 import Account from './pages/Account.jsx';
 
+// Button that switches between light and dark mode.
 function ThemeToggle() {
     const [dark, setDark] = React.useState(
         () => document.documentElement.dataset.theme === 'dark'
@@ -38,6 +39,7 @@ function ThemeToggle() {
     );
 }
 
+// Dropdown letting a user preview the app as a lower-permission role.
 function ViewAsControl() {
     const user = getUser();
     const roles = viewableRoles();
@@ -63,6 +65,7 @@ function ViewAsControl() {
     );
 }
 
+// Warning banner shown while previewing as another role.
 function ImpersonationBanner() {
     const viewAs = getViewAsRole();
     if (!viewAs) return null;
@@ -81,13 +84,16 @@ function ImpersonationBanner() {
     );
 }
 
+// Watches token expiry and warns/logs out the user before it expires.
 function SessionWatcher() {
     const navigate = useNavigate();
     const [warn, setWarn] = React.useState(false);
+    const token = getToken();
 
     React.useEffect(() => {
         const exp = getTokenExp();
         if (!exp) return;
+        setWarn(false);
 
         const msLeft = exp * 1000 - Date.now();
         // setTimeout delay is a 32-bit int; skip scheduling if it would overflow.
@@ -104,7 +110,7 @@ function SessionWatcher() {
             clearTimeout(warnTimer);
             clearTimeout(outTimer);
         };
-    }, [navigate]);
+    }, [navigate, token]);
 
     if (!warn) return null;
 
@@ -119,7 +125,8 @@ function SessionWatcher() {
 function Shell() {
     const user = getUser();
     const navigate = useNavigate();
-    const can = (p) => getEffectivePermissions().includes(p);
+    const perms = React.useMemo(() => getEffectivePermissions(), []);
+    const can = (p) => perms.includes(p);
 
     // No token means not signed in.
     if (!getToken()) {

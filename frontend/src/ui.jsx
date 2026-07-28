@@ -15,6 +15,7 @@ export function useTableView(rows, searchFields) {
     return { query, setQuery, view, sort, toggleSort };
 }
 
+// Clickable table header that toggles sort direction.
 export function SortHeader({ label, sortKey, sort, toggleSort, className }) {
     const active = sort.key === sortKey;
     const arrow = active ? (sort.dir === 1 ? ' +' : ' -') : '';
@@ -30,6 +31,7 @@ export function SortHeader({ label, sortKey, sort, toggleSort, className }) {
     );
 }
 
+// Simple search input box.
 export function SearchBox({ query, setQuery, placeholder }) {
     return (
         <input
@@ -42,6 +44,7 @@ export function SearchBox({ query, setQuery, placeholder }) {
     );
 }
 
+// Button that exports the given rows as a downloadable CSV file.
 export function ExportButton({ filename, columns, rows, label }) {
     function download() {
         const csv = toCsv(columns, rows);
@@ -62,6 +65,7 @@ export function ExportButton({ filename, columns, rows, label }) {
     );
 }
 
+// Button that copies text to the clipboard and shows a checkmark briefly.
 export function CopyText({ value }) {
     const [copied, setCopied] = useState(false);
     const timerRef = useRef(null);
@@ -85,6 +89,7 @@ export function CopyText({ value }) {
     );
 }
 
+// Returns a keydown handler that runs fn when Enter is pressed.
 export function onEnter(fn) {
     return (e) => {
         if (e.key === 'Enter') fn();

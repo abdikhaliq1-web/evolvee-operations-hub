@@ -5,6 +5,7 @@ import { useTableView, SortHeader, SearchBox, onEnter } from '../ui.jsx';
 
 const EMPTY_FORM = { sku: '', name: '', manufacturer_id: '', threshold: '', unit_cost: '' };
 
+// Products page: list, edit thresholds/cost, bulk actions, add new.
 export default function Products() {
     const [products, setProducts] = useState(null);
     const [manufacturers, setManufacturers] = useState([]);
@@ -20,6 +21,7 @@ export default function Products() {
     const [bulkThreshold, setBulkThreshold] = useState('');
     const { query, setQuery, view, sort, toggleSort } = useTableView(products, ['sku', 'name', 'manufacturer_name']);
 
+    // Loads products and manufacturers together.
     function load() {
         return Promise.all([api('/products'), api('/manufacturers')])
             .then(([p, m]) => {
@@ -51,6 +53,7 @@ export default function Products() {
         setCostEdits((prev) => ({ ...prev, [productId]: undefined }));
     }
 
+    // Saves a row's edited threshold and/or cost to the server.
     async function saveRow(product) {
         if (busy) return;
         const threshold = edits[product.id];
@@ -99,7 +102,7 @@ export default function Products() {
         });
     }
 
-    // Shared runner for bulk actions: applies `apply` to every selected id, then reloads either way.
+    // Applies an action to every selected product, then reloads.
     async function runBulk(apply) {
         setError('');
         try {
@@ -140,6 +143,7 @@ export default function Products() {
         }
     }
 
+    // Triggers a Shopify product sync on the server.
     async function syncShopify() {
         if (busy) return;
         setError('');
@@ -158,6 +162,7 @@ export default function Products() {
         }
     }
 
+    // Validates and submits the new product form.
     async function createProduct() {
         if (busy) return;
         if (!form.sku.trim() || !form.name.trim()) {
@@ -190,6 +195,7 @@ export default function Products() {
         ));
     }
 
+    // Renders one table row for a product, with editable fields.
     function renderRow(product) {
         return (
             <tr key={product.id}>

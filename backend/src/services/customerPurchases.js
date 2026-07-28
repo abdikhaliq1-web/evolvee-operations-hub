@@ -1,9 +1,11 @@
+// groups orders by customer email, finds each customer's favorite product
 function aggregateCustomerPurchases(orders) {
     const byEmail = {};
 
     for (const order of orders) {
-        const email = order.customer && order.customer.email;
-        if (!email) continue;
+        const rawEmail = order.customer && order.customer.email;
+        if (!rawEmail) continue;
+        const email = rawEmail.toLowerCase();
 
         if (!byEmail[email]) {
             byEmail[email] = { unitsBySku: {}, titleBySku: {}, history: [] };

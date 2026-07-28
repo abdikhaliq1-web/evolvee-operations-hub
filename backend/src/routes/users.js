@@ -12,6 +12,7 @@ router.param('id', validateId);
 
 const ROLES = Object.keys(ROLE_PERMISSIONS);
 
+// lists all users
 router.get('/', asyncRoute(async (req, res) => {
     const sql = 'SELECT id, email, full_name, role, is_active, created_at FROM users ORDER BY id';
     const result = await query(sql);
@@ -19,6 +20,7 @@ router.get('/', asyncRoute(async (req, res) => {
     res.json({ users: result.rows });
 }));
 
+// creates a new user account
 router.post('/', asyncRoute(async (req, res) => {
     let body = req.body;
     if (!body) {
@@ -57,6 +59,7 @@ router.post('/', asyncRoute(async (req, res) => {
     res.status(201).json({ user: result.rows[0] });
 }));
 
+// updates a user, blocks removing/deactivating the last active admin
 router.patch('/:id', asyncRoute(async (req, res) => {
     const id = Number(req.params.id);
 

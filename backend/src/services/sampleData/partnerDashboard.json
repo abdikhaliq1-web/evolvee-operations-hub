@@ -1,0 +1,20 @@
+{
+  "generated_at": "2026-07-22T12:00:00+00:00",
+  "kpis": {
+    "approved_partners": 8,
+    "pending_partners": 2,
+    "total_clicks": 3120,
+    "recent_clicks": 640,
+    "total_conversions": 142,
+    "conversion_rate": 4.6,
+    "total_revenue": 11840.0,
+    "total_commission": 1184.0,
+    "pending_commission": 210.0,
+    "total_sales_count": 142
+  },
+  "top_partners": [
+    { "partner_name": "Aria Wellness", "partner_code": "ER-AR1A20", "location": "Austin, TX, US", "clicks": 540, "conversions": 31, "revenue": 2480.0, "commission": 248.0 },
+    { "partner_name": "Bloom Collective", "partner_code": "ER-BL00M7", "location": "Leeds, UK", "clicks": 410, "conversions": 22, "revenue": 1760.0, "commission": 176.0 },
+    { "partner_name": "Cedar & Sage", "partner_code": "ER-CDR339", "location": "Portland, OR, US", "clicks": 300, "conversions": 15, "revenue": 1200.0, "commission": 120.0 }
+  ]
+}

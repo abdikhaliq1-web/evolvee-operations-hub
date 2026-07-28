@@ -6,6 +6,7 @@ const ROLES = ['admin', 'developer', 'ops_manager', 'marketing', 'partner'];
 
 const EMPTY_FORM = { email: '', full_name: '', password: '', role: 'marketing' };
 
+// Team access page: manage users, roles, and password resets.
 export default function Users() {
     const [users, setUsers] = useState(null);
     const [error, setError] = useState('');
@@ -28,6 +29,7 @@ export default function Users() {
         setForm((prev) => ({ ...prev, [field]: value }));
     }
 
+    // Submits the new team member form.
     async function createUser() {
         if (busy) return;
 
@@ -44,6 +46,7 @@ export default function Users() {
         }
     }
 
+    // Sends a partial update (role, active state, password) for a user.
     async function patchUser(id, body) {
         try {
             await api(`/users/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
@@ -65,6 +68,7 @@ export default function Users() {
         setResetPwd('');
     }
 
+    // Validates and submits a password reset for a user.
     async function submitReset(user) {
         if (busy) return;
         if (resetPwd.length < 8) {
@@ -94,6 +98,7 @@ export default function Users() {
         return <span className="pill low">Deactivated</span>;
     }
 
+    // Renders one table row for a user, with role/status controls.
     function renderRow(user) {
         return (
             <tr key={user.id}>

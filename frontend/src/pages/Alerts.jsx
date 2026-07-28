@@ -10,6 +10,7 @@ const STATUS_FILTERS = [
     { value: 'resolved', label: 'Resolved' },
 ];
 
+// Alerts page: lists reorder alerts and lets user act on them.
 export default function Alerts() {
     const [alerts, setAlerts] = useState(null);
     const [error, setError] = useState('');
@@ -19,8 +20,9 @@ export default function Alerts() {
     const { query, setQuery, view, sort, toggleSort } = useTableView(alerts, ['sku', 'product_name', 'manufacturer']);
     const loadSeq = useRef(0);
 
+    // Fetches alerts from the server, optionally filtered by status.
     function load() {
-        // Guard against a stale response landing after a newer request (e.g. filter changed mid-flight).
+        // Ignore this response if a newer request has started.
         const seq = ++loadSeq.current;
         api(`/alerts${filter ? `?status=${filter}` : ''}`)
             .then((data) => { if (seq === loadSeq.current) setAlerts(data.alerts); })
@@ -31,6 +33,7 @@ export default function Alerts() {
         load();
     }, [filter]);
 
+    // Updates an alert's status (acknowledge/resolve).
     async function setStatus(id, status) {
         try {
             await api(`/alerts/${id}`, {
@@ -44,6 +47,7 @@ export default function Alerts() {
         }
     }
 
+    // Deletes an alert after confirming with the user.
     async function remove(id) {
         if (!window.confirm('Delete this alert?')) return;
 
@@ -78,6 +82,7 @@ export default function Alerts() {
         }
     }
 
+    // Maps alert status to a CSS class name for styling.
     function statusClass(status) {
         if (status === 'open') return 'low';
         if (status === 'acknowledged') return 'warn';

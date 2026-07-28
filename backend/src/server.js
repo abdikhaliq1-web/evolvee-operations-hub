@@ -36,6 +36,7 @@ app.use(function securityHeaders(req, res, next) {
     next();
 });
 
+// health check endpoint, also flags if any integration is degraded
 app.get('/api/health', async function (req, res) {
     const health = { ok: true, time: new Date().toISOString() };
 
@@ -67,6 +68,7 @@ app.use(function (req, res) {
 app.use(errorHandler);
 
 // Runs after listen() so a slow or failing DB doesn't block the server binding.
+// runs schema setup, seeding, and the stock check job after server starts
 async function startBackgroundTasks() {
     try {
         await ensureSchema();

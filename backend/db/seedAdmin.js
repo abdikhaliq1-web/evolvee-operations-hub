@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 
-// envVars param lets the --check self-test below pass in fake env without touching process.env.
+// envVars lets tests pass fake env without touching process.env
 function adminCreds(envVars) {
     const env = envVars || process.env;
     const provided = Boolean(env.ADMIN_PASSWORD);
@@ -13,6 +13,7 @@ function adminCreds(envVars) {
     };
 }
 
+// creates one admin user, skips if any users already exist
 async function seedAdmin() {
     const { query } = require('../src/config/db');
 

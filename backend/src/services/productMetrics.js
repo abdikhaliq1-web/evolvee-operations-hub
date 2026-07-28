@@ -1,3 +1,4 @@
+// calculates margin, turnover, and sell-through for one product
 function computeProductMetrics(sale, stock, cost) {
     const units = sale.units_sold_30d || 0;
     const revenue = sale.revenue_30d || 0;

@@ -29,6 +29,7 @@ function Sparkline({ points, width = 260, height = 60 }) {
     );
 }
 
+// Detail page for one product: stats, trend, reviews, and history.
 export default function ProductDetail() {
     const { id } = useParams();
     const [data, setData] = useState(null);

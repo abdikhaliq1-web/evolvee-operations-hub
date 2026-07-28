@@ -1,7 +1,5 @@
-// Seeds the database with demo users, manufacturers, products, thresholds,
-// and sample activity so the app is usable immediately after setup.
-// Run with:  npm run db:seed   (from the backend folder)
-// Safe to re-run: it skips seeding if users already exist.
+// seeds demo users, manufacturers, products, and sample activity
+// run with npm run db:seed, safe to re-run
 
 const bcrypt = require('bcryptjs');
 const { pool, query } = require('../src/config/db');
@@ -10,6 +8,7 @@ function hashPassword(password) {
     return bcrypt.hashSync(password, 10);
 }
 
+// checks db url points to a local machine, not a remote/prod server
 function targetIsLocal() {
     try {
         const host = new URL(process.env.DATABASE_URL || '').hostname;
@@ -19,6 +18,7 @@ function targetIsLocal() {
     }
 }
 
+// main seed function: inserts demo users, manufacturers, products, and sample data
 async function seed() {
     // Demo accounts share a known password, so refuse anything but local dev.
     if (process.env.NODE_ENV === 'production' || !targetIsLocal()) {
@@ -68,10 +68,8 @@ async function seed() {
         );
     }
 
-    // ── Products (SKUs match the bundled Shopify sample data) ──
-    // For the LIVE store (no SKUs), set products.shopify_inventory_item_id per
-    // product so stock levels and reorder alerts match. The demo rows below leave
-    // it NULL because sample mode joins by SKU.
+    // Products, SKUs match the bundled Shopify sample data
+    // live stores set shopify_inventory_item_id, demo rows leave it null
     const productRows = [
         ['ER-SER-001', 'Radiance Renewal Serum 30ml', luminaId,   12.00],
         ['ER-OIL-002', 'Golden Glow Face Oil 25ml',   luminaId,   10.00],
@@ -93,7 +91,7 @@ async function seed() {
         productIds[sku] = result.rows[0].id;
     }
 
-    // ── Reorder thresholds ──
+    // reorder thresholds
     const thresholds = {
         'ER-SER-001': 50,
         'ER-OIL-002': 40,
@@ -112,7 +110,7 @@ async function seed() {
         );
     }
 
-    // ── Sample reorder history, communications, production runs ──
+    // sample reorder history, communications, production runs
     await query(
         `INSERT INTO reorder_history (product_id, manufacturer_id, quantity_ordered, ordered_at, notes) VALUES
          ($1, $2, 1000, CURRENT_DATE - 45, 'Spring restock'),

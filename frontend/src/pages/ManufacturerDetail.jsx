@@ -6,6 +6,7 @@ import { onEnter } from '../ui.jsx';
 
 const CHANNELS = ['email', 'phone', 'meeting', 'other'];
 
+// Detail page for one manufacturer: metrics, contacts, comms, reorders, runs.
 export default function ManufacturerDetail() {
     const { id } = useParams();
     const [params] = useSearchParams();
@@ -43,8 +44,7 @@ export default function ManufacturerDetail() {
         }
     }, [data]);
 
-    // Prefill the reorder form when arriving via a "Reorder" link with a product in the query string.
-    // Only runs once per page load (guarded by the prefilled ref).
+    // Prefill the reorder form from the query string, once per page load.
     useEffect(function () {
         if (prefilled.current || !data) return;
 
@@ -64,7 +64,7 @@ export default function ManufacturerDetail() {
             ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, [data, params]);
 
-    // POST a sub-resource, then clear its form and reload.
+    // Posts a sub-resource, then clears its form and reloads.
     async function post(path, body, reset) {
         if (busy) return;
         setError('');
@@ -104,6 +104,7 @@ export default function ManufacturerDetail() {
         });
     }
 
+    // Saves the edited supplier metrics (lead time, MOQ, etc).
     async function saveMetrics() {
         if (busy) return;
         setError('');
@@ -138,6 +139,7 @@ export default function ManufacturerDetail() {
         );
     }
 
+    // Submits a new reorder, converting form strings to numbers.
     function submitReorder() {
         // Select and input values are strings; the API wants numbers.
         const body = {

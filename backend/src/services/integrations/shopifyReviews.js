@@ -2,21 +2,25 @@ const env = require('../../config/env');
 const { callExternal, withSync, cached } = require('../apiClient');
 const sample = require('../sampleData/shopify.json');
 
+// builds the shopify graphql api url for this store
 function graphqlUrl() {
     return 'https://' + env.shopify.storeDomain + '/admin/api/' + env.shopify.apiVersion + '/graphql.json';
 }
 
+// pulls one named field's value out of a metaobject node
 function field(node, key) {
     const f = (node.fields || []).find((x) => x.key === key);
     return f ? f.value : null;
 }
 
+// finds the sku of the product a review points to
 function referencedSku(node) {
     const edges = node.product && node.product.reference &&
         node.product.reference.variants && node.product.reference.variants.edges;
     return (edges && edges[0] && edges[0].node && edges[0].node.sku) || null;
 }
 
+// turns a raw metaobject node into a clean review object
 function mapReview(node) {
     return {
         id: node.id,
@@ -29,6 +33,7 @@ function mapReview(node) {
     };
 }
 
+// pages through shopify product review metaobjects via graphql
 async function getReviews() {
     const mode = env.modes.shopify;
 
@@ -55,9 +60,7 @@ async function getReviews() {
                 body: JSON.stringify({ query: query, variables: { after: after } })
             }, { idempotent: true });
 
-            // Shopify's GraphQL API returns HTTP 200 even for throttling/errors, so a
-            // non-2xx check misses them. Surface data.errors as a real failure instead of
-            // silently returning zero reviews and recording the sync as successful.
+            // GraphQL errors return HTTP 200, so check data.errors too
             if (data.errors && data.errors.length) {
                 throw new Error('Shopify GraphQL error: ' + JSON.stringify(data.errors).slice(0, 300));
             }

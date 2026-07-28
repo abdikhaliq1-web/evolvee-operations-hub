@@ -1,16 +1,14 @@
-// Centralised external API handler.
-// All live API calls from every integration service go through callExternal()
-// so timeouts, error shaping, and sync-status recording live in one place.
+// all external api calls go through callExternal for timeouts and retries
 
 const { query } = require('../config/db');
 
+// gets just the hostname from a url, for error messages
 function getHost(url) {
     const parsed = new URL(url);
     return parsed.host;
 }
 
-// Retry-After is either a number of seconds or an HTTP-date. Number() alone turns
-// the date form into NaN and the server's wait hint is silently lost.
+// handles Retry-After as either seconds or a date string
 function parseRetryAfter(header) {
     if (!header) return 0;
     const seconds = Number(header);
@@ -22,6 +20,7 @@ function parseRetryAfter(header) {
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+// makes one http request with a timeout, throws a labeled error on failure
 async function attempt(url, options, config, timeoutMs) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -54,8 +53,7 @@ async function attempt(url, options, config, timeoutMs) {
         try {
             json = await response.json();
         } catch (parseError) {
-            // A malformed/empty 2xx body is a deterministic contract error, not a
-            // transient network fault — flag it so shouldRetry() won't retry it.
+            // bad json body is not a network error, so mark it as not retryable
             const err = new Error(`Invalid JSON from ${getHost(url)}: ${parseError.message}`);
             err.parse = true;
             throw err;
@@ -80,6 +78,7 @@ async function attempt(url, options, config, timeoutMs) {
 const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
 const MAX_BACKOFF_MS = 8000;
 
+// decides if a failed request is worth retrying
 function shouldRetry(error, retryableMethod, attemptsLeft) {
     if (attemptsLeft <= 0) return false;
     if (!retryableMethod) return false;
@@ -89,19 +88,20 @@ function shouldRetry(error, retryableMethod, attemptsLeft) {
     return error.timeout === true || error.network === true;
 }
 
+// calculates how long to wait before the next retry, with jitter
 function backoffMs(attemptNo, retryAfterMs, baseMs) {
     if (retryAfterMs > 0) return Math.min(retryAfterMs, MAX_BACKOFF_MS);
     const capped = Math.min(baseMs * 2 ** attemptNo, MAX_BACKOFF_MS);
     return Math.round(capped / 2 + Math.random() * (capped / 2));
 }
 
+// main entry point: calls an external api with retries and timeout
 async function callExternal(url, options = {}, config = {}) {
     const timeoutMs = config.timeoutMs ?? 15000;
     const maxRetries = config.retries ?? 3;
     const baseMs = config.retryBaseMs ?? 500;
     const method = (options.method || 'GET').toUpperCase();
-    // GET/HEAD retry by default; a read-only POST (e.g. a GraphQL query) can opt in
-    // with config.idempotent so transient 429/5xx get the same backoff.
+    // GET/HEAD retry by default, other methods can opt in with config.idempotent
     const retryableMethod = method === 'GET' || method === 'HEAD' || config.idempotent === true;
 
     for (let attemptNo = 0; ; attemptNo++) {
@@ -114,8 +114,7 @@ async function callExternal(url, options = {}, config = {}) {
     }
 }
 
-// Record the result of a sync attempt so the frontend can surface failures
-// instead of silently showing stale data.
+// saves the result of a sync attempt so the frontend can show it
 async function recordSync(source, mode, ok, message = null) {
     const sql = `
         INSERT INTO sync_status (source, mode, last_run_at, last_success, ok, message)
@@ -138,6 +137,7 @@ async function recordSync(source, mode, ok, message = null) {
 const CACHE_TTL_MS = Number(process.env.INTEGRATION_CACHE_TTL_MS || 60000);
 const cacheStore = new Map();
 
+// caches a function's result for a short time, avoids repeat api calls
 function cached(key, fn) {
     const hit = cacheStore.get(key);
 
@@ -152,6 +152,7 @@ function cached(key, fn) {
     return value;
 }
 
+// wraps a set of functions so each one is cached automatically
 function cacheAll(source, fns) {
     const out = {};
     for (const name of Object.keys(fns)) {
@@ -160,6 +161,7 @@ function cacheAll(source, fns) {
     return out;
 }
 
+// runs an integration call and records its sync status, hides real error status
 async function withSync(source, mode, run, offValue = []) {
     if (mode === 'off') {
         await recordSync(source, 'off', true);
@@ -172,10 +174,7 @@ async function withSync(source, mode, run, offValue = []) {
         return data;
     } catch (error) {
         await recordSync(source, mode, false, error.message);
-        // Never let an upstream status (Shopify 401/429, Zoho 5xx) become our own
-        // response status — a leaked 401 would trip the frontend logout interceptor.
-        // Retry logic already ran inside callExternal (reads the real error.status);
-        // this runs after, so overriding here is safe. Message kept for server logs.
+        // hide the real upstream status code so it does not trigger client logout
         error.status = 502;
         throw error;
     }
@@ -196,7 +195,7 @@ if (require.main === module) {
         await cached('e', () => Promise.resolve(++boom));
         assert.strictEqual(boom, 1);
 
-        // Retry policy: transient statuses on a retryable method only.
+        // only retry transient statuses on a retryable method
         assert.strictEqual(shouldRetry({ status: 429 }, true, 3), true);
         assert.strictEqual(shouldRetry({ status: 503 }, true, 3), true);
         assert.strictEqual(shouldRetry({ status: 404 }, true, 3), false);
@@ -205,7 +204,7 @@ if (require.main === module) {
         assert.strictEqual(shouldRetry({ network: true }, true, 3), true);
         assert.strictEqual(shouldRetry({ parse: true }, true, 3), false);    // parse error never retried
         assert.strictEqual(shouldRetry({ timeout: true }, true, 0), false);
-        // Retry-After: seconds and HTTP-date both yield a non-negative ms hint.
+        // Retry-After works whether given as seconds or a date
         assert.strictEqual(parseRetryAfter('120'), 120000);
         assert.strictEqual(parseRetryAfter(null), 0);
         assert.ok(parseRetryAfter('Wed, 21 Oct 2099 07:28:00 GMT') > 0);

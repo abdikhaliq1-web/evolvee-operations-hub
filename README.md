@@ -44,7 +44,9 @@ Prefer to do it by hand, or something failed then follow the numbered steps belo
 8. [Troubleshooting](_docs/setup-help/troubleshooting.md)
 9. [Project structure reference](_docs/setup-help/project-structure.md)
 10. [Browser support](_docs/browser-support.md)
-11. [Architecture & maintenance reference](_docs/architecture.md) — for developers changing the code
+11. [Architecture & maintenance guide](_docs/maintenance/) — for developers changing or maintaining the code
+12. [User guide](_docs/user-guide/) — how to use each screen (for the people working in the app)
+13. [Developer reference](_docs/reference/) — API, data model, frontend internals, dev workflow
 
 ---
 

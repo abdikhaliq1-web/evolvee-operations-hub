@@ -10,6 +10,7 @@ const router = express.Router();
 router.use(authenticate, requirePermission('manufacturers'));
 router.param('id', validateId);
 
+// lists all manufacturers with counts of products, active runs, etc
 router.get('/', asyncRoute(async (req, res) => {
     const sql =
         'SELECT m.*, ' +
@@ -31,6 +32,7 @@ router.get('/', asyncRoute(async (req, res) => {
     res.json({ manufacturers: result.rows });
 }));
 
+// returns one manufacturer plus its contacts, products, comms, runs, history
 router.get('/:id', asyncRoute(async (req, res) => {
     const id = Number(req.params.id);
 
@@ -98,6 +100,7 @@ router.get('/:id', asyncRoute(async (req, res) => {
     });
 }));
 
+// creates a new manufacturer record
 router.post('/', asyncRoute(async (req, res) => {
     const body = req.body || {};
     const name = body.name;
@@ -129,12 +132,12 @@ router.post('/', asyncRoute(async (req, res) => {
     res.status(201).json({ manufacturer: result.rows[0] });
 }));
 
+// updates only the manufacturer fields present in the request body
 router.patch('/:id', asyncRoute(async (req, res) => {
     const body = req.body || {};
     const id = Number(req.params.id);
 
-    // Only update columns whose key is present; '' clears numeric fields.
-    // (COALESCE couldn't tell "omitted" from "cleared", so clearing never worked.)
+    // only update columns that were sent, empty string clears a field
     const set = [];
     const values = [];
     const changed = {};
@@ -172,6 +175,7 @@ router.patch('/:id', asyncRoute(async (req, res) => {
     res.json({ manufacturer: result.rows[0] });
 }));
 
+// adds a contact person to a manufacturer
 router.post('/:id/contacts', asyncRoute(async (req, res) => {
     const body = req.body || {};
     const name = body.name;
@@ -199,6 +203,7 @@ router.post('/:id/contacts', asyncRoute(async (req, res) => {
     res.status(201).json({ contact: result.rows[0] });
 }));
 
+// logs a communication (email/phone/etc) with a manufacturer
 router.post('/:id/communications', asyncRoute(async (req, res) => {
     const body = req.body || {};
     const channel = body.channel;
@@ -222,6 +227,7 @@ router.post('/:id/communications', asyncRoute(async (req, res) => {
     res.status(201).json({ communication: result.rows[0] });
 }));
 
+// records a new reorder placed with a manufacturer
 router.post('/:id/reorders', asyncRoute(async (req, res) => {
     const body = req.body || {};
     const productId = body.product_id;
