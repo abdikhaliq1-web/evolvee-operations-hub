@@ -6,12 +6,10 @@ const TOKEN_KEY = 'opshub_token';
 const USER_KEY = 'opshub_user';
 const VIEW_AS_KEY = 'opshub_view_as';
 
-// Gets the saved auth token, if any.
 export function getToken() {
     return localStorage.getItem(TOKEN_KEY);
 }
 
-// Saves login info and clears any old role-preview setting.
 export function setSession(token, user) {
     localStorage.removeItem(VIEW_AS_KEY);
     localStorage.setItem(TOKEN_KEY, token);
@@ -22,7 +20,6 @@ export function setToken(token) {
     localStorage.setItem(TOKEN_KEY, token);
 }
 
-// Logs the user out by wiping all saved session data.
 export function clearSession() {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
@@ -38,7 +35,6 @@ export function setViewAsRole(role) {
     else localStorage.removeItem(VIEW_AS_KEY);
 }
 
-// Works out what the user can actually do, accounting for role preview.
 export function getEffectivePermissions() {
     const user = getUser();
     if (!user) return [];
@@ -53,7 +49,6 @@ export function getEffectivePermissions() {
     return map[viewAs].filter((p) => real.includes(p));
 }
 
-// Lists roles the user is allowed to preview as.
 export function viewableRoles() {
     const user = getUser();
     const map = user?.role_permissions;
@@ -66,7 +61,6 @@ export function viewableRoles() {
     );
 }
 
-// Reads the token's expiry time without checking its signature.
 export function getTokenExp() {
     const token = getToken();
     if (!token) return null;
@@ -81,7 +75,6 @@ export function getTokenExp() {
     }
 }
 
-// Reads the saved user object from storage.
 export function getUser() {
     const raw = localStorage.getItem(USER_KEY);
     if (!raw) {

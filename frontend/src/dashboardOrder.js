@@ -1,6 +1,5 @@
 // Dashboard tile reordering
 
-// Sorts items to match a saved order, unknown items go last.
 export function applyOrder(items, order) {
     if (!order || order.length === 0) return items;
 
@@ -22,7 +21,6 @@ export function dropBefore(rect, x, y) {
     return nx + ny < 1;
 }
 
-// Moves a dragged id to before/after the drop target in the id list.
 export function reorder(ids, dragId, dropId, before = true) {
     if (dragId === dropId) return ids;
 

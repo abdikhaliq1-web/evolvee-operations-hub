@@ -10,7 +10,6 @@ function resolveErrorMessage(err) {
     return err.message;
 }
 
-// Login page: email/password form that signs the user in.
 export default function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -18,7 +17,6 @@ export default function Login() {
     const [busy, setBusy] = useState(false);
     const navigate = useNavigate();
 
-    // Sends login credentials to the server and starts the session.
     async function submit() {
         setBusy(true);
         setError('');

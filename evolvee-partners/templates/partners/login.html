@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Login — Evolvée Radiance Partners{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+    <h1>Partner Login</h1>
+    <p class="muted">Sign in to access your dashboard, QR code, and earnings.</p>
+</section>
+
+<section class="auth-card">
+    <form method="post" class="form">
+        {% csrf_token %}
+        <div class="form-row">
+            <label>Email</label>
+            <input type="text" name="username" required>
+        </div>
+        <div class="form-row">
+            <label>Password</label>
+            <input type="password" name="password" required>
+        </div>
+        <button type="submit" class="btn-ghost">Log In</button>
+    </form>
+    <p class="muted center">New partner? <a href="{% url 'partners:apply' %}">Apply here</a></p>
+    <p class="muted center admin-login-hint">Evolvée staff? <a href="{% url 'partners:admin_login' %}">Admin login</a></p>
+</section>
+{% endblock %}

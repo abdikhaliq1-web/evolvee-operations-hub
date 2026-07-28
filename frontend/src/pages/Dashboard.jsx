@@ -15,7 +15,6 @@ import {
     CartesianGrid,
 } from 'recharts';
 
-// Formats a number as a dollar amount string.
 function formatGBP(amount) {
     return '$' + Number(amount).toLocaleString('en-GB', {
         minimumFractionDigits: 2,
@@ -106,14 +105,6 @@ function ExecKpiCards({ inventory, sales, revenue, shipping, alerts }) {
             value: formatCount(alerts.data.open_count),
             bad: alerts.data.open_count > 0,
         });
-        if (alerts.data.critical_count > 0) {
-            cards.push({
-                key: 'alerts-critical',
-                label: 'Critical alerts',
-                value: formatCount(alerts.data.critical_count),
-                bad: true,
-            });
-        }
     }
 
     if (cards.length === 0) return null;
@@ -130,7 +121,6 @@ function ExecKpiCards({ inventory, sales, revenue, shipping, alerts }) {
     );
 }
 
-// Wraps dashboard content in a card, with an optional drag handle.
 function Tile({ id, title, source, wide, drag, children }) {
     // `drag` is null when the layout is locked; the tile renders inert.
 
@@ -165,11 +155,11 @@ function Tile({ id, title, source, wide, drag, children }) {
     );
 }
 
-// Saves the tile order and lock state to localStorage.
+// Layout persistence + lock, in localStorage. Falls back to defaults if
+// storage is unavailable (private mode, quota).
 const ORDER_KEY = 'dashboard-tile-order';
 const LOCK_KEY = 'dashboard-locked';
 
-// Reads a JSON value from localStorage, with a fallback if missing/broken.
 function load(key, fallback) {
     try {
         const raw = localStorage.getItem(key);
@@ -179,14 +169,12 @@ function load(key, fallback) {
     }
 }
 
-// Saves a value to localStorage as JSON.
 function save(key, value) {
     try {
         localStorage.setItem(key, JSON.stringify(value));
     } catch { /* ignore */ }
 }
 
-// Manages saved tile order and lock state for the dashboard grid.
 function useDashboardLayout() {
     const [order, setOrderState] = useState(() => load(ORDER_KEY, []));
     const [locked, setLockedState] = useState(() => load(LOCK_KEY, true));
@@ -209,7 +197,8 @@ function useDashboardLayout() {
     return { order, setOrder, locked, setLocked, reset };
 }
 
-// Loads one dashboard module's data, optionally re-polling in the background.
+// Loads one dashboard module's data when enabled. Pass refreshMs to re-poll
+// in the background; a failed refresh keeps the last good data.
 function useModule(path, enabled, refreshMs) {
     const [state, setState] = useState({ loading: enabled, data: null, error: null });
 
@@ -257,7 +246,6 @@ function Body({ state, children }) {
 
 const ALERTS_SEEN_KEY = 'alerts-seen-count';
 
-// Shows how many new alerts appeared since the user last viewed them.
 function NewAlertsBadge({ count }) {
     const [seen] = useState(() => load(ALERTS_SEEN_KEY, null));
     useEffect(() => { save(ALERTS_SEEN_KEY, count); }, [count]);
@@ -274,12 +262,6 @@ function stockPill(isLowStock) {
     return <span className="pill ok">OK</span>;
 }
 
-function severityPill(severity) {
-    if (severity === 'critical') return <span className="pill low">Critical</span>;
-
-    return <span className="pill warn">Warning</span>;
-}
-
 function shippingStatusClass(status) {
     if (status === 'Delivered') return 'ok';
     if (status === 'Exception') return 'low';
@@ -287,7 +269,6 @@ function shippingStatusClass(status) {
     return 'info';
 }
 
-// Generic sortable/searchable table with CSV export, used by many tiles.
 function DataTable({ columns, rows, filename, limit, copyKey, keyField = 'id', search }) {
     const searchFields = search || columns.map((c) => c.key);
     const { query, setQuery, view, sort, toggleSort } = useTableView(rows, searchFields);
@@ -341,7 +322,6 @@ function DataTable({ columns, rows, filename, limit, copyKey, keyField = 'id', s
     );
 }
 
-// Main dashboard page: assembles tiles based on the user's permissions.
 export default function Dashboard() {
     const permissions = getEffectivePermissions();
 
@@ -356,7 +336,7 @@ export default function Dashboard() {
     const revenue = useModule('/dashboard/revenue', canAccess('revenue'));
     const shipping = useModule('/dashboard/shipping', canAccess('shipping'), 30000);
     const alerts = useModule('/dashboard/alerts-summary', canAccess('alerts'));
-    const partners = useModule('/dashboard/partners', canAccess('partners'), 60000);
+    const partners = useModule('/dashboard/partners', canAccess('partners'));
     const sync = useModule('/sync/status', canAccess('sync'));
 
     // Sources that failed their most recent sync
@@ -397,14 +377,6 @@ export default function Dashboard() {
                                                 </div>
                                                 <div className="l">
                                                     SKUs / item IDs need reordering
-                                                    {data.critical_count > 0 && (
-                                                        <>
-                                                            {' · '}
-                                                            <strong style={{ color: 'var(--bad)' }}>
-                                                                {data.critical_count} critical
-                                                            </strong>
-                                                        </>
-                                                    )}
                                                     <NewAlertsBadge count={data.open_count} />
                                                 </div>
                                             </div>
@@ -415,7 +387,6 @@ export default function Dashboard() {
                                             limit={5}
                                             copyKey="sku"
                                             columns={[
-                                                { label: 'Severity', key: 'severity', render: (a) => severityPill(a.severity) },
                                                 { label: 'SKU / Item ID', key: 'sku' },
                                                 { label: 'Product', key: 'name' },
                                                 { label: 'Stock', key: 'stock_level', num: true },
@@ -606,41 +577,75 @@ export default function Dashboard() {
         defs.push({ id: 'partners', el: (
                     <Tile title="Partners & commissions" source="QR partner dashboard" wide>
                         <Body state={partners}>
-                            {(data) => (
-                                <>
-                                    <div className="kpi-strip">
-                                        <div className="kpi kpi-card">
-                                            <div className="v">{data.kpis.approved_partners}</div>
-                                            <div className="l">Approved partners</div>
+                            {(data) => {
+                                const kpis = data.kpis || {};
+                                const leaderboard = data.leaderboard || [];
+
+                                const hasActivity =
+                                    leaderboard.length > 0 ||
+                                    kpis.approved_partners ||
+                                    kpis.pending_partners ||
+                                    kpis.total_clicks;
+
+                                if (!hasActivity) {
+                                    return <p className="empty">No partner activity yet.</p>;
+                                }
+
+                                return (
+                                    <>
+                                        <div className="kpis">
+                                            <div className="kpi">
+                                                <div className="v">{formatCount(kpis.approved_partners)}</div>
+                                                <div className="l">Approved partners</div>
+                                            </div>
+                                            <div className="kpi">
+                                                <div className="v">{formatCount(kpis.pending_partners)}</div>
+                                                <div className="l">Awaiting approval</div>
+                                            </div>
+                                            <div className="kpi">
+                                                <div className="v">{formatCount(kpis.total_clicks)}</div>
+                                                <div className="l">QR scans / link clicks</div>
+                                            </div>
+                                            <div className="kpi">
+                                                <div className="v">{Number(kpis.conversion_rate || 0)}%</div>
+                                                <div className="l">Conversion rate</div>
+                                            </div>
+                                            <div className="kpi">
+                                                <div className="v">{formatGBP(kpis.total_revenue)}</div>
+                                                <div className="l">Partner-driven revenue</div>
+                                            </div>
+                                            <div className="kpi">
+                                                <div className="v">{formatGBP(kpis.total_commission)}</div>
+                                                <div className="l">Commission earned</div>
+                                            </div>
+                                            <div className="kpi">
+                                                <div className="v">{formatGBP(kpis.pending_commission)}</div>
+                                                <div className="l">Commission pending payout</div>
+                                            </div>
                                         </div>
-                                        <div className="kpi kpi-card">
-                                            <div className="v">{data.kpis.recent_clicks}</div>
-                                            <div className="l">Clicks (30d)</div>
-                                        </div>
-                                        <div className="kpi kpi-card">
-                                            <div className="v">{data.kpis.conversion_rate}%</div>
-                                            <div className="l">Conversion rate</div>
-                                        </div>
-                                        <div className="kpi kpi-card">
-                                            <div className="v">{formatGBP(data.kpis.total_commission)}</div>
-                                            <div className="l">Commission (approved)</div>
-                                        </div>
-                                    </div>
-                                    <DataTable
-                                        rows={data.top_partners}
-                                        filename="top-partners.csv"
-                                        keyField="partner_code"
-                                        columns={[
-                                            { label: 'Partner', key: 'partner_name' },
-                                            { label: 'Code', key: 'partner_code' },
-                                            { label: 'Location', key: 'location' },
-                                            { label: 'Clicks', key: 'clicks', num: true },
-                                            { label: 'Conversions', key: 'conversions', num: true },
-                                            { label: 'Commission', key: 'commission', num: true, render: (p) => formatGBP(p.commission) },
-                                        ]}
-                                    />
-                                </>
-                            )}
+                                        {leaderboard.length === 0 ? (
+                                            <p className="empty">No approved partners yet.</p>
+                                        ) : (
+                                        <DataTable
+                                            rows={leaderboard}
+                                            filename="partner-leaderboard.csv"
+                                            keyField="partner_code"
+                                            copyKey="partner_code"
+                                            limit={5}
+                                            columns={[
+                                                { label: 'Partner', key: 'partner_name' },
+                                                { label: 'Code', key: 'partner_code' },
+                                                { label: 'Location', key: 'location' },
+                                                { label: 'Scans', key: 'clicks', num: true },
+                                                { label: 'Conversions', key: 'conversions', num: true },
+                                                { label: 'Revenue', key: 'revenue', num: true, render: (p) => formatGBP(p.revenue) },
+                                                { label: 'Commission', key: 'commission', num: true, render: (p) => formatGBP(p.commission) },
+                                            ]}
+                                        />
+                                        )}
+                                    </>
+                                );
+                            }}
                         </Body>
                     </Tile>
         ) });
@@ -710,12 +715,10 @@ export default function Dashboard() {
     const orderedIds = ordered.map((d) => d.id);
 
     // Drag-to-reorder handlers for the tile grid (only active when layout is unlocked)
-    // Starts dragging a tile to reorder it.
     const onPointerDown = (id, e) => {
         e.currentTarget.setPointerCapture(e.pointerId); // route move/up here even off-tile
         setDragId(id);
     };
-    // Tracks which tile the dragged tile is currently hovering over.
     const onPointerMove = (e) => {
         if (dragId == null) return;
 
@@ -728,7 +731,6 @@ export default function Dashboard() {
 
         if (!over || over.id !== id || over.before !== before) setOver({ id, before });
     };
-    // Finishes the drag: applies the new tile order if dropped on a target.
     const onPointerUp = () => {
         if (dragId != null && over && over.id !== dragId) {
             setOrder(reorder(orderedIds, dragId, over.id, over.before));

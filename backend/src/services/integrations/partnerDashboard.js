@@ -2,44 +2,42 @@ const env = require('../../config/env');
 const { callExternal, withSync } = require('../apiClient');
 const sample = require('../sampleData/partnerDashboard.json');
 
-// Build the summary endpoint URL, tolerating a trailing slash on the base.
-function buildSummaryUrl(baseUrl) {
-    return baseUrl.replace(/\/$/, '') + '/api/ops-summary/';
+function summaryUrl(baseUrl) {
+    return String(baseUrl).replace(/\/+$/, '') + '/api/ops-hub/summary/';
 }
 
-// zero-value shape returned when the module is off, matches other integrations' off behavior.
-const EMPTY_SUMMARY = {
-    generated_at: null,
-    kpis: {
-        approved_partners: 0,
-        pending_partners: 0,
-        total_clicks: 0,
-        recent_clicks: 0,
-        total_conversions: 0,
-        conversion_rate: 0,
-        total_revenue: 0,
-        total_commission: 0,
-        pending_commission: 0,
-        total_sales_count: 0
-    },
-    top_partners: []
-};
-
-// off:   no data, tile shows zeros — matches shopify/zoho off behavior.
-// sample: bundled demo data.
-// live:  call the Evolvée Partners Django API with the shared key.
-async function getPartnerSummary() {
+async function getPartnerProgram() {
     const mode = env.modes.partnerDashboard;
 
-    return withSync('partnerDashboard', mode, async () => {
-        if (mode === 'sample') {
+    return withSync('partner_dashboard', mode, async () => {
+        if (mode !== 'live') {
             return sample;
         }
-        const url = buildSummaryUrl(env.partnerDashboard.baseUrl);
-        return callExternal(url, {
-            headers: { 'X-API-Key': env.partnerDashboard.apiKey }
+
+        const { baseUrl, apiKey } = env.partnerDashboard;
+        if (!baseUrl || !apiKey) {
+            throw new Error(
+                'PARTNER_DASHBOARD_MODE=live needs PARTNER_DASHBOARD_BASE_URL and PARTNER_DASHBOARD_API_KEY in backend/.env.'
+            );
+        }
+
+        const data = await callExternal(summaryUrl(baseUrl), {
+            headers: { 'X-Ops-Hub-Key': apiKey, Accept: 'application/json' }
         });
-    }, EMPTY_SUMMARY);
+
+        return {
+            kpis: data.kpis || {},
+            leaderboard: data.leaderboard || []
+        };
+    }, sample);
 }
 
-module.exports = { getPartnerSummary, buildSummaryUrl };
+if (require.main === module) {
+    const assert = require('assert');
+    assert.strictEqual(summaryUrl('https://p.example.com'), 'https://p.example.com/api/ops-hub/summary/');
+    assert.strictEqual(summaryUrl('https://p.example.com///'), 'https://p.example.com/api/ops-hub/summary/');
+    assert.ok(Array.isArray(sample.leaderboard) && sample.kpis.approved_partners >= 0);
+    console.log('partnerDashboard self-check passed.');
+}
+
+module.exports = { getPartnerProgram, summaryUrl };

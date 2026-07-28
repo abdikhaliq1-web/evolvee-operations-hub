@@ -2,7 +2,8 @@
 
 ← [Back to README](../../README.md)
 
-You need two things: Node.js and PostgreSQL.
+You need Node.js and PostgreSQL, plus Python if you want the QR partner app
+(`evolvee-partners`) that feeds the hub's partner dashboard tile.
 
 ---
 
@@ -42,6 +43,26 @@ psql --version
 
 If `psql` isn't recognized, PostgreSQL's `bin` folder isn't on your PATH. See
 [Troubleshooting](troubleshooting.md#node-or-psql-is-not-recognized).
+
+---
+
+## 2.3 Python 3.11+ (optional — QR partner app only)
+
+Needed only for `evolvee-partners`, the Django app behind the hub's **Partners &
+commissions** tile. Skip it and the setup scripts skip that app; the tile keeps
+serving its bundled sample data.
+
+1. Download Python 3.11 or newer from https://www.python.org/downloads/.
+2. Tick **Add python.exe to PATH** in the installer, and keep the **py launcher**
+   option (the setup scripts look for `py`).
+3. Check it in a new PowerShell window:
+
+```powershell
+py --version
+```
+
+The setup scripts create the virtual environment and install the requirements
+for you — you don't need to do that by hand.
 
 ---
 

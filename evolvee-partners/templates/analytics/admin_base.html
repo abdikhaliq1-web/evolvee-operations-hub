@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Command Center — Evolvée Radiance{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/partner.css">
+    <link rel="stylesheet" href="/static/css/analytics.css">
+    {% block head_extra %}{% endblock %}
+</head>
+<body class="analytics-body">
+    {% include "analytics/includes/admin_header.html" %}
+
+    <main class="container analytics-main">
+        {% block content %}{% endblock %}
+    </main>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

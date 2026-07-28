@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { api, setToken } from '../api.js';
 import { onEnter, useFlash } from '../ui.jsx';
 
-// Account page: lets the signed-in user change their password.
 export default function Account() {
     const [current, setCurrent] = useState('');
     const [next, setNext] = useState('');
@@ -11,7 +10,6 @@ export default function Account() {
     const [done, setDone] = useFlash();
     const [busy, setBusy] = useState(false);
 
-    // Validates and submits the password change request.
     async function submit() {
         if (busy) return;
         setError('');

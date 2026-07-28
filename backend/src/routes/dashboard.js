@@ -6,13 +6,11 @@ const shopify = require('../services/integrations/shopify');
 const zohoCrm = require('../services/integrations/zohoCrm');
 const partnerDashboard = require('../services/integrations/partnerDashboard');
 const { computeProductMetrics } = require('../services/productMetrics');
-const { sortBySeverity } = require('../services/alertSeverity');
 
 const router = express.Router();
 
 router.use(authenticate);
 
-// returns shopify stock levels merged with our reorder thresholds
 router.get('/inventory', requirePermission('inventory'), asyncRoute(async (req, res) => {
     const stock = await shopify.getStockLevels();
 
@@ -53,7 +51,6 @@ router.get('/inventory', requirePermission('inventory'), asyncRoute(async (req, 
     res.json({ items: items, low_count: lowCount });
 }));
 
-// returns sales overview plus best/worst selling products
 router.get('/sales', requirePermission('sales'), asyncRoute(async (req, res) => {
     const [products, today] = await Promise.all([
         shopify.getSalesOverview(),
@@ -79,7 +76,6 @@ router.get('/sales', requirePermission('sales'), asyncRoute(async (req, res) => 
     });
 }));
 
-// combines sales, stock, and cost data into per-product metrics
 router.get('/product-performance', requirePermission('revenue'), asyncRoute(async (req, res) => {
     const [sales, stock, costResult] = await Promise.all([
         shopify.getSalesOverview(),
@@ -110,7 +106,6 @@ router.get('/product-performance', requirePermission('revenue'), asyncRoute(asyn
     res.json({ products: rows });
 }));
 
-// returns top 10 customers joined with crm segment and purchase history
 router.get('/customers', requirePermission('customers'), asyncRoute(async (req, res) => {
     const [shop, crm, purchases] = await Promise.all([
         shopify.getTopCustomers(),
@@ -124,10 +119,11 @@ router.get('/customers', requirePermission('customers'), asyncRoute(async (req, 
         crmByEmail[(c.email || '').toLowerCase()] = c;
     }
 
-    const topTen = shop
-        .slice()
-        .sort(function (a, b) { return b.total_spent - a.total_spent; })
-        .slice(0, 10);
+    shop.sort(function (a, b) {
+        return b.total_spent - a.total_spent;
+    });
+
+    const topTen = shop.slice(0, 10);
 
     const customers = [];
     for (const c of topTen) {
@@ -145,7 +141,7 @@ router.get('/customers', requirePermission('customers'), asyncRoute(async (req, 
             }
         }
 
-        const purchase = purchases[(c.email || '').toLowerCase()];
+        const purchase = purchases[c.email];
 
         const customer = Object.assign({}, c);
         customer.segment = segment;
@@ -159,7 +155,6 @@ router.get('/customers', requirePermission('customers'), asyncRoute(async (req, 
     res.json({ customers: customers });
 }));
 
-// returns daily, weekly (grouped), and monthly revenue totals
 router.get('/revenue', requirePermission('revenue'), asyncRoute(async (req, res) => {
     const [daily, monthly] = await Promise.all([
         shopify.getDailyRevenue(),
@@ -197,7 +192,6 @@ router.get('/revenue', requirePermission('revenue'), asyncRoute(async (req, res)
     });
 }));
 
-// returns shipment trackings grouped by status, plus exceptions
 router.get('/shipping', requirePermission('shipping'), asyncRoute(async (req, res) => {
     const trackings = await shopify.getTrackings();
 
@@ -215,31 +209,27 @@ router.get('/shipping', requirePermission('shipping'), asyncRoute(async (req, re
     });
 }));
 
-// returns open alerts ranked by severity, top 20 plus counts
 router.get('/alerts-summary', requirePermission('alerts'), asyncRoute(async (req, res) => {
     const sql =
         'SELECT ra.id, p.sku, p.name, ra.stock_level, ra.threshold, ra.status, ra.triggered_at, ' +
-        '       m.name AS manufacturer ' +
+        '       m.name AS manufacturer, COUNT(*) OVER()::int AS total_open ' +
         'FROM reorder_alerts ra ' +
         'JOIN products p ON p.id = ra.product_id ' +
         'LEFT JOIN manufacturers m ON m.id = p.manufacturer_id ' +
-        "WHERE ra.status = 'open'";
+        "WHERE ra.status = 'open' " +
+        'ORDER BY ra.triggered_at DESC ' +
+        'LIMIT 20';
 
     const result = await query(sql);
-    const ranked = sortBySeverity(result.rows);
-    const criticalCount = ranked.filter((a) => a.severity === 'critical').length;
 
     res.json({
-        open_alerts: ranked.slice(0, 20),
-        open_count: ranked.length,
-        critical_count: criticalCount
+        open_alerts: result.rows,
+        open_count: result.rows.length > 0 ? result.rows[0].total_open : 0
     });
 }));
 
-// QR partner summary. Read-only pull from the Evolvee Partners app.
 router.get('/partners', requirePermission('partners'), asyncRoute(async (req, res) => {
-    const summary = await partnerDashboard.getPartnerSummary();
-    res.json(summary);
+    res.json(await partnerDashboard.getPartnerProgram());
 }));
 
 module.exports = router;

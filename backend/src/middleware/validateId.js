@@ -1,4 +1,4 @@
-// rejects bad :id values before the route handler runs
+// Express route param handler for ':id' - rejects non-positive-integer ids before the route runs.
 function validateId(req, res, next, value) {
     const id = Number(value);
 

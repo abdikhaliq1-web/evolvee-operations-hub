@@ -13,13 +13,12 @@ function permissionMapFor(role) {
     return role === 'admin' || role === 'developer' ? ROLE_PERMISSIONS : undefined;
 }
 
-// keeps login timing the same even when the user is not found
+// Used to keep compare timing consistent when the user isn't found, to avoid leaking existence via timing.
 const DUMMY_HASH = bcrypt.hashSync('unused-timing-equaliser', 10);
 
 // In-memory login attempt tracker, keyed by ip/email combos.
 const loginAttempts = new Map();
 
-// checks and updates attempt count for a key, true if over the max
 function overLimit(key, now, windowMs, max) {
     const rec = loginAttempts.get(key);
 
@@ -32,7 +31,6 @@ function overLimit(key, now, windowMs, max) {
     return rec.count > max;
 }
 
-// express middleware, blocks login attempts if too many recent tries
 function rateLimit(req, res, next) {
     const windowMs = 15 * 60 * 1000;
     const now = Date.now();
@@ -57,7 +55,6 @@ function rateLimit(req, res, next) {
     next();
 }
 
-// checks email/password, returns a jwt token and user info
 router.post('/login', rateLimit, asyncRoute(async (req, res) => {
     const body = req.body || {};
     const email = body.email;
@@ -111,7 +108,6 @@ router.post('/login', rateLimit, asyncRoute(async (req, res) => {
     });
 }));
 
-// returns the currently logged in user's info
 router.get('/me', authenticate, (req, res) => {
     const permissions = ROLE_PERMISSIONS[req.user.role] || [];
 
@@ -127,7 +123,6 @@ router.get('/me', authenticate, (req, res) => {
     res.json({ user: user });
 });
 
-// changes the logged in user's password after checking the old one
 router.post('/password', rateLimit, authenticate, asyncRoute(async (req, res) => {
     const body = req.body || {};
     const currentPassword = body.current_password;
@@ -169,7 +164,7 @@ router.post('/password', rateLimit, authenticate, asyncRoute(async (req, res) =>
     res.json({ ok: true, token: token });
 }));
 
-// quick self-test, only runs when this file is executed directly
+// Quick self-check for the rate limiter logic, run only when this file is executed directly.
 if (require.main === module) {
     const assert = require('assert');
     const now = Date.now();

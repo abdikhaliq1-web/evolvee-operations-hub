@@ -5,7 +5,8 @@ const sample = require('../sampleData/zohoCrm.json');
 
 const MAX_CONTACT_PAGES = 100; // 100 * 200 = 20000 contacts; a safety ceiling, not a real limit.
 
-// pages through all zoho crm contacts up to a safety page limit
+// Page through all contacts. Zoho signals continuation via info.more_records; we also
+// stop on an empty page and cap total pages so a malformed response can't loop forever.
 async function fetchAllContacts(token) {
     const options = { headers: { Authorization: 'Zoho-oauthtoken ' + token } };
     const contacts = [];
@@ -37,7 +38,6 @@ async function fetchAllContacts(token) {
     return contacts;
 }
 
-// fetches zoho contacts and maps them into our customer shape
 async function getCrmCustomers() {
     const mode = env.modes.zohoCrm;
 
@@ -50,7 +50,8 @@ async function getCrmCustomers() {
         try {
             contacts = await fetchAllContacts(await getZohoAccessToken());
         } catch (err) {
-            // token was revoked early, clear it and retry once with a fresh one
+            // The cached token was revoked/rotated before its nominal expiry — refresh
+            // once and retry, rather than failing for the token's remaining lifetime.
             if (err.status === 401) {
                 clearZohoToken();
                 contacts = await fetchAllContacts(await getZohoAccessToken());

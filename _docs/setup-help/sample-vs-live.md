@@ -8,9 +8,12 @@ integration at a time as credentials arrive:
 ```
 SHOPIFY_MODE=sample          # sample | live
 ZOHO_CRM_MODE=sample
+PARTNER_DASHBOARD_MODE=sample
 ```
 
-The QR partner dashboard is currently a placeholder
+The QR partner dashboard reads the `evolvee-partners` Django app. Going live also needs
+`PARTNER_DASHBOARD_BASE_URL` (that app's public URL) and `PARTNER_DASHBOARD_API_KEY`, which
+must match `OPS_HUB_API_KEY` in the partner app's own `.env`.
 
 Shopify drives sales, top customers, stock levels, revenue (daily/weekly/monthly), and shipping status (order fulfilment tracking).
 
@@ -22,7 +25,7 @@ so the whole UI works without any credentials.
 ## Switching a source to live
 
 1. Fill in the credentials in `.env`. Every variable is listed in `.env.example` with
-   inline comments (e.g. `SHOPIFY_STORE_DOMAIN` + `SHOPIFY_ADMIN_TOKEN`, or the Zoho
+   inline comments (e.g. `SHOPIFY_STORE_DOMAIN` + `SHOPIFY_ACCESS_TOKEN`, or the Zoho
    `CLIENT_ID` / `CLIENT_SECRET` / `REFRESH_TOKEN` trio). The account owner provides them.
 2. Change that source's `*_MODE` to `live`.
 3. Confirm the credentials connect with the

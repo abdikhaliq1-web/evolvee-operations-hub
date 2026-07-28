@@ -1,6 +1,6 @@
 const assert = require('assert');
 const { mapReview } = require('./shopifyReviews');
-// Checking if the mapReview functions by passing a full review and an empty review
+
 function test() {
     const r = mapReview({
         id: 'gid://shopify/Metaobject/9',

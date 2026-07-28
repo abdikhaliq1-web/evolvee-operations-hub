@@ -1,4 +1,4 @@
-// catches all errors, hides stack traces from clients, logs full error
+// Catch-all Express error handler - keeps stack traces out of API responses while logging the full error server-side.
 
 function logError(req, errorMessage) {
     const timestamp = new Date().toISOString();
@@ -16,14 +16,13 @@ const PG_ERROR_RESPONSES = {
     '22003': { status: 400, message: 'A number in the request is out of range.' }, 
 };
 
-// central error handler, turns errors into safe json responses
 function errorHandler(err, req, res, next) {
     logError(req, err.message);
 
     const mapped = err.code ? PG_ERROR_RESPONSES[err.code] : undefined;
     const status = mapped ? mapped.status : (err.status || 500);
 
-    // only show the real error message when it is marked safe to expose
+    // Only leak the raw error message for known 4xx errors explicitly marked safe to expose.
     let responseMessage;
     if (mapped) {
         responseMessage = mapped.message;
@@ -36,7 +35,7 @@ function errorHandler(err, req, res, next) {
     res.status(status).json({ error: responseMessage });
 }
 
-// wraps async routes so thrown errors reach errorHandler
+// Wrap async route handlers so thrown errors reach errorHandler.
 function wrapAsyncRoute(routeHandler) {
     function routeWrapper(req, res, next) {
         Promise.resolve(routeHandler(req, res, next)).catch(next);

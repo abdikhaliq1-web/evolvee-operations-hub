@@ -1,0 +1,16 @@
+<header class="site-header site-header--admin">
+    <div class="container header-inner">
+        <a href="{% url 'analytics:command_center' %}" class="brand">
+            <span class="brand-name">Evolvée Radiance — Admin</span>
+        </a>
+        <nav class="site-nav">
+            <a href="{% url 'analytics:command_center' %}"{% if active_admin_nav == "overview" %} class="active"{% endif %}>Overview</a>
+            <a href="/admin/partners/partner/">Manage Partners</a>
+            <a href="/admin/">Django Admin</a>
+            {% if user.partner_profile %}
+            <a href="{% url 'partners:dashboard' %}">Partner Portal</a>
+            {% endif %}
+            <a href="{% url 'partners:logout' %}">Logout</a>
+        </nav>
+    </div>
+</header>

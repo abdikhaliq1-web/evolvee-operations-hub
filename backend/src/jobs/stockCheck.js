@@ -2,7 +2,6 @@ const cron = require('node-cron');
 const { query } = require('../config/db');
 const env = require('../config/env');
 const shopify = require('../services/integrations/shopify');
-const { selectLowStock } = require('../services/reorderDecision');
 
 // Inserts a new alert unless one is already open/acknowledged for this product.
 async function alertIfLowStock(productId, currentStock, threshold) {
@@ -21,7 +20,7 @@ async function alertIfLowStock(productId, currentStock, threshold) {
 let lastRun = null;
 const getLastStockCheck = () => lastRun;
 
-// runs the check and saves failure state so /health can see it
+// Public entry point: records failure state before re-throwing so /health can report it.
 async function runStockCheck() {
     try {
         return await runStockCheckInner();
@@ -31,9 +30,19 @@ async function runStockCheck() {
     }
 }
 
-// pulls live stock from shopify, compares to thresholds, makes alerts
 async function runStockCheckInner() {
     const stockLevels = await shopify.getStockLevels();
+
+    // Index stock by item id and SKU so either can match a threshold row.
+    const stockByKey = {};
+    for (const stockItem of stockLevels) {
+        if (stockItem.inventory_item_id != null) {
+            stockByKey[stockItem.inventory_item_id] = stockItem.stock_on_hand;
+        }
+        if (stockItem.sku) {
+            stockByKey[stockItem.sku] = stockItem.stock_on_hand;
+        }
+    }
 
     const thresholdsResult = await query(
         `SELECT p.id AS product_id, p.sku, p.shopify_inventory_item_id, rt.threshold
@@ -41,13 +50,26 @@ async function runStockCheckInner() {
     );
 
     const thresholds = thresholdsResult.rows;
-    const toAlert = selectLowStock(stockLevels, thresholds);
     let alertsCreated = 0;
 
-    for (const item of toAlert) {
-        const wasCreated = await alertIfLowStock(item.product_id, item.stock_level, item.threshold);
-        if (wasCreated) {
-            alertsCreated++;
+    for (const row of thresholds) {
+        // Match on item id first, then fall back to SKU.
+        let currentStock = row.shopify_inventory_item_id != null
+            ? stockByKey[row.shopify_inventory_item_id]
+            : undefined;
+        if (currentStock === undefined) {
+            currentStock = stockByKey[row.sku];
+        }
+
+        if (currentStock === undefined) {
+            continue;
+        }
+
+        if (currentStock <= row.threshold) {
+            const wasCreated = await alertIfLowStock(row.product_id, currentStock, row.threshold);
+            if (wasCreated) {
+                alertsCreated++;
+            }
         }
     }
 

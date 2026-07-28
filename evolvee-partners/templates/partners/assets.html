@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Marketing Assets — Evolvée Radiance{% endblock %}
+
+{% block content %}
+<section class="dashboard">
+    <div class="dashboard-header">
+        <div>
+            <h1>Marketing Asset Hub</h1>
+            <p class="muted">Pre-made social posts, product images, and campaign messaging to help you share faster.</p>
+        </div>
+        <a href="{% url 'partners:dashboard' %}" class="link-btn">← Back to dashboard</a>
+    </div>
+
+    {% if assets %}
+    <div class="asset-grid">
+        {% for asset in assets %}
+        <article class="card asset-card">
+            <div class="asset-card-header">
+                <h2 class="section-heading">{{ asset.title }}</h2>
+                <span class="asset-type">{{ asset.get_asset_type_display }}</span>
+            </div>
+            {% if asset.description %}
+            <p class="muted">{{ asset.description }}</p>
+            {% endif %}
+            {% if asset.file and asset.asset_type == "image" %}
+            <img src="{{ asset.file.url }}" alt="{{ asset.title }}" class="asset-preview">
+            {% endif %}
+            {% if asset.content %}
+            <div class="asset-copy" id="asset-copy-{{ asset.id }}">{{ asset.content|linebreaksbr }}</div>
+            <button type="button" class="btn-secondary btn-copy-asset" data-target="asset-copy-{{ asset.id }}" data-title="{{ asset.title }}">
+                Copy text
+            </button>
+            {% endif %}
+            {% if asset.file %}
+            <a href="{% url 'partners:download_asset' asset.id %}" class="btn-ghost">Download</a>
+            {% endif %}
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="card notice">
+        <p>No marketing assets available yet. Check back soon — your brand team will upload campaign materials here.</p>
+    </div>
+    {% endif %}
+</section>
+
+<script>
+document.querySelectorAll(".btn-copy-asset").forEach((button) => {
+    button.addEventListener("click", () => {
+        const block = document.getElementById(button.dataset.target);
+        const text = block.innerText.replace(/\n\n/g, "\n");
+        navigator.clipboard.writeText(text.replace("{{ partner.discount_code }}", "{{ partner.discount_code }}"));
+        button.textContent = "Copied!";
+        setTimeout(() => { button.textContent = "Copy text"; }, 1500);
+    });
+});
+</script>
+{% endblock %}
