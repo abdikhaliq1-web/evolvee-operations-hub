@@ -33,11 +33,34 @@ Open `.env`. For local dev the defaults work as-is if you used the password
 DATABASE_URL=postgresql://opshub:opshub_dev_password@localhost:5432/operations_hub
 ```
 
-Set `JWT_SECRET` to any long random string. It signs login tokens; anything unguessable
-is fine for local dev.
+Set `JWT_SECRET` to a long random string. It signs the login tokens. Any value that nobody
+can guess is sufficient for local development.
+
+The server refuses to start with a weak secret on a real deployment. A real deployment is
+`NODE_ENV=production`, a remote database, or any integration in `live` mode. Make a strong
+value with this command:
+
+```powershell
+node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+```
 
 Leave the `*_MODE=sample` lines as they are for now. See
 [Sample data vs live API mode](sample-vs-live.md).
+
+### Security settings
+
+Leave these three empty for local development. The defaults are correct.
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `TRUST_PROXY` | `1` in production, `0` elsewhere | How many proxies the server trusts for the client IP address. The rate limits use that address. |
+| `CROSS_SITE_COOKIES` | `true` in production, `false` elsewhere | Set to `true` when the frontend and the API are on different sites. The session cookie then uses `SameSite=None; Secure`, which needs HTTPS. |
+| `DATABASE_CA_CERT` | empty | The PEM certificate of the database CA. Necessary for a remote database in production. |
+
+**Caution:** Do not set `CROSS_SITE_COOKIES=true` on an HTTP address. The browser refuses a
+`Secure` cookie on HTTP, and nobody can sign in.
+
+[security.md](../maintenance/security.md) explains each control.
 
 ---
 

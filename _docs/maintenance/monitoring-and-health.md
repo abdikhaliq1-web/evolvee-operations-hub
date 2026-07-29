@@ -20,11 +20,18 @@ It returns JSON and an HTTP status:
 
 | Response | Meaning |
 |---|---|
-| `200` with `{ ok: true, time: ... }` | App is up and the database is reachable. |
-| `200` with `{ ok: true, degraded: true }` | App is up, but at least one source in `sync_status` last failed (`ok = false`). Data may be stale. Investigate the failing source. |
-| `503` with `{ ok: false, db_ok: false }` | The database query failed. This is the serious one — the app can't read or write. |
+| `200` with `{ ok: true, time: ... }` | The application runs and the database answers. |
+| `503` with `{ ok: false, time: ... }` | The database query failed. This is the serious one. The application cannot read or write. |
 
-No auth is needed, so you can hit it from a browser, a `curl`, or an uptime monitor.
+The endpoint needs no sign-in. You can call it from a browser, from `curl`, or from an uptime
+monitor.
+
+**The endpoint no longer reports a failed integration.** It gives only the state of the
+application and the database. Anyone can read this endpoint, so it must not tell an outsider
+which parts of the system have a fault.
+
+To find a failing integration, use `GET /api/sync/status`. That endpoint needs the `sync`
+permission. The `sync_status` table below holds the same data.
 
 **Wire it to an uptime monitor.** Point any external monitor (UptimeRobot, Render's own,
 etc.) at `/api/health` and alert on non-`200`. That turns "a user told us it's down" into

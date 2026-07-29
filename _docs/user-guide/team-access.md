@@ -9,29 +9,43 @@ and it doesn't appear for anyone else. This is the same screen the code calls th
 
 ## Create a user
 
-Add an account with an email, full name, an initial password (at least 8 characters), and a
-**role**. The role decides everything the person can see and do — there's no per-screen
-permission tweaking. Roles:
+Add an account with an email address, a full name, a first password, and a **role**. The
+role decides what the person can see and what the person can change.
 
-| Role | Can use |
-|---|---|
-| Admin | Everything, including this page. |
-| Developer | Everything except this page. |
-| Operations Manager | Dashboard + the manufacturer tool. |
-| Marketing | Sales, customers, partner module. |
-| Partner / Ambassador | Partner module only. |
+A password must obey all of these rules:
 
-Emails are stored lowercase; a duplicate email is rejected.
+- The password has 12 characters or more.
+- The password does not start with a common word, for example `password` or `qwerty`.
+- The password uses 5 different characters or more.
+- The password does not contain the part of your email address before the `@` sign.
+
+Roles:
+
+| Role | Can see | Can change |
+|---|---|---|
+| Admin | Everything, including this page. | Alerts, manufacturers, products, users. |
+| Developer | Everything except this page. | Alerts, manufacturers, products. |
+| Operations Manager | Dashboard and the manufacturer tool. | Alerts, manufacturers, products. |
+| Marketing | Sales, customers, partner module. | Nothing. |
+| Partner / Ambassador | Partner module only. | Nothing. |
+
+To see a screen is not the same as to change it. Marketing and Partner users see their
+screens without the buttons and the forms.
+
+The server stores each email address in lower case, and refuses a duplicate.
 
 ---
 
 ## Change a role, reset a password, deactivate
 
-- **Change role** — pick a different role; it takes effect on the person's next action.
-- **Reset password** — set a new one. This **immediately signs that person out everywhere**
-  (any device they were logged in on) and they must sign in again with the new password.
-- **Deactivate** — blocks sign-in without deleting any of the history tied to the account.
-  Reactivate the same way.
+**First, type your own password** in the field above the list. The three actions below all
+need it. This makes sure that a stolen session alone cannot take over an account.
+
+- **To change a role** — select a different role. It applies at the person's next action.
+- **To reset a password** — set a new one. This **signs that person out everywhere
+  immediately**, on each device. The person must sign in again with the new password.
+- **To deactivate** — stop the sign-in without a delete. All history stays. Use the same
+  control to activate the account again.
 
 ### Two guardrails
 
@@ -45,16 +59,20 @@ You'll hit these by design, not by bug:
 
 ## Audit log
 
-User and data actions are recorded and viewable here (latest entries), so you can answer "who
-changed this, and when."
+The log records user actions and data actions, so you can find who made a change, and when.
+You read the most recent entries here.
+
+The log also records each sign-in, each failed sign-in, each password change, each role
+change, and each deleted alert.
 
 ---
 
 ## For the whole team
 
-- Everyone should [change their own password](account.md) the first time they sign in —
-  especially away from the shared demo password.
-- Deactivate leavers rather than deleting them, to keep their history intact.
+- Each person must [change the password](account.md) at the first sign-in. This is important
+  if you still use the shared demo password.
+- Deactivate a person who leaves. Do not delete the account, because the history stays with
+  the account.
 
 Server-side details (sessions, JWT, rotating the signing secret) are in the maintenance docs:
 [access-management.md](../maintenance/access-management.md).

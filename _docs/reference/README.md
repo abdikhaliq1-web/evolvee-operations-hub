@@ -2,6 +2,8 @@
 
 ← [Back to project README](../../README.md)
 
+For the security controls, read [../maintenance/security.md](../maintenance/security.md).
+
 The precise, source-of-truth technical docs — the API contract, the data model, the frontend
 internals, and the development workflow. For the *narrative* overview (how the pieces fit, how
 a request flows), start with [maintenance/architecture.md](../maintenance/architecture.md);
@@ -19,8 +21,6 @@ come here for the exact details.
 1. [README](../../README.md) + [setup-help/](../setup-help/) — get it running on demo data.
 2. [maintenance/architecture.md](../maintenance/architecture.md) — the mental model.
 3. This folder — the details for whatever you're touching.
-4. [onboarding-and-growth-plan.md](../deployment/onboarding-and-growth-plan.md) — where the
-   project is headed and who owns what.
 
 Keep these in sync with the code: if you change a route, a table, or a convention, update the
 matching doc in the same PR.

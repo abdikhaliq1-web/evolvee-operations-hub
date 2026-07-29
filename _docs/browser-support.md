@@ -1,6 +1,6 @@
 # Browser support
 
-← [Back to README](../../README.md)
+← [Back to README](../README.md)
 
 Browsers tested the Operations Hub on.
 

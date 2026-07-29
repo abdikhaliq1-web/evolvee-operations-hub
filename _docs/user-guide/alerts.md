@@ -20,7 +20,13 @@ Each alert moves through three states:
 what allows the *next* one to fire if stock stays low. So an alert you leave open forever blocks
 future alerts for that product — work the queue down.
 
-You can also delete an alert outright if it was raised in error.
+You can also delete an alert if the system raised it in error.
+
+**Only an Admin or a Developer can delete an alert.** An Operations Manager can acknowledge
+and resolve an alert. The Delete button does not appear for that role.
+
+A delete destroys the record that the stock problem happened. The system therefore writes
+each delete to the audit log, with the state of the alert.
 
 ---
 

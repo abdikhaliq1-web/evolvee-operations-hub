@@ -74,11 +74,34 @@ See [access-management.md](access-management.md).
 ## One user is unexpectedly logged out / can't get in
 
 **Symptom:** a single user, not everyone.
-**Cause:** their token expired (normal after `JWT_EXPIRES_IN`, default 8h), their password was
-reset (which invalidates their sessions), or their account was deactivated.
-**Fix:** have them sign in again. If they can't, an Admin checks the Users page — active?
-correct role? — and resets the password if needed. See
+**Cause:** one of four things. The token expired, which is normal after `JWT_EXPIRES_IN`
+(default 8h). Somebody reset the password, which ends that user's sessions. The user pressed
+Sign out on another device, which also ends this session. Somebody deactivated the
+account.
+**Fix:** ask the person to sign in again. If that fails, an Admin opens the Team access page
+and checks that the account is active and has the correct role. The Admin then resets the
+password. The Admin must type their own password to confirm. See
 [access-management.md](access-management.md).
+
+---
+
+## A user cannot change anything, but sees the screen
+
+**Symptom:** the buttons and the forms are missing, or a write gets `403` with "has read-only
+access to this module".
+**Cause:** the role can see the module but cannot change it. This is correct behaviour.
+**Fix:** if the person needs write access, add the module to that role in
+`WRITE_PERMISSIONS` in `backend/src/middleware/auth.js`, then deploy again. See
+[access-management.md](access-management.md).
+
+---
+
+## A user cannot delete an alert
+
+**Symptom:** the Delete button is missing on the Alerts page for an Operations Manager.
+**Cause:** only `admin` and `developer` can delete an alert. This is correct behaviour.
+**Fix:** ask an Admin or a Developer to delete it. To acknowledge or resolve an alert is
+enough for normal work.
 
 ---
 

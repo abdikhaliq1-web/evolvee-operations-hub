@@ -6,25 +6,42 @@ The **Account** page is available to everyone, whatever your role.
 
 ---
 
-## Change your password
+## To change your password
 
-Enter your current password and a new one (at least 8 characters), and save. **This is the
-first thing anyone should do after being given a login** — especially to get off the shared
-demo password (`radiance123`).
+Type your current password, then type the new password two times. Then save.
 
-Changing your password signs you out of any *other* sessions (other devices/browsers); you stay
-signed in where you made the change.
+**Do this immediately after you receive a login.** It is important if you still use the
+shared demo password `radiance123`.
 
-If you've forgotten your password and can't sign in, there's no self-service reset — an
-[admin](team-access.md) resets it for you from the Team access page.
+A password must obey all of these rules:
+
+- The password has 12 characters or more.
+- The password does not start with a common word, for example `password` or `qwerty`.
+- The password uses 5 different characters or more.
+- The password does not contain the part of your email address before the `@` sign.
+
+The page tells you which rule failed if the new password is not permitted.
+
+A password change signs you out of your **other** sessions, on other devices and other
+browsers. You stay signed in where you made the change.
+
+There is no self-service reset. If you cannot sign in, an [admin](team-access.md) sets a new
+password for you on the Team access page.
 
 ---
 
 ## Sessions
 
-You stay signed in for a fixed window (8 hours by default), then you're asked to sign in again —
-normal, not a problem. About **2 minutes before** your session expires, a banner warns you, so
-you can save your work and sign back in.
+You stay signed in for a fixed time. The default is 8 hours. The application then asks you to
+sign in again. This is normal.
+
+A banner warns you about **2 minutes before** the session ends. Save your work and sign in
+again.
+
+**To sign out, use the Sign out button.** The button tells the server to end the session. If
+you only close the browser, the session stays valid until it expires.
+
+**Note:** Sign out ends your sessions on all your devices, not only on the device you use.
 
 ---
 

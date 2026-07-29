@@ -72,16 +72,68 @@ Or use the Services app: Win+R → `services.msc` → find "postgresql-x64-16" �
 
 ## CORS error in the browser console
 
-This shouldn't happen locally; the Vite proxy avoids CORS entirely. If you see it, the
-frontend and backend are on different origins without the proxy in between.
+This must not happen locally, because the Vite proxy prevents CORS. If you see this error,
+the frontend and the backend are on different origins with no proxy between them.
+
+On a real deployment, make sure that `CORS_ORIGIN` on the backend contains the exact
+frontend URL. The session cookie travels only to an origin on that list.
 
 ---
 
-## Logged out unexpectedly / 401 errors
+## Signed out without warning, or `401` errors
 
-JWT tokens expire after `JWT_EXPIRES_IN` (default 8 hours). Just log in again. If it
-happens right after login, the backend's `JWT_SECRET` changed between issuing and
-verifying the token (e.g. you restarted with a different `.env`). Log in again.
+The session expires after `JWT_EXPIRES_IN`. The default is 8 hours. Sign in again.
+
+If this happens immediately after a sign-in, `JWT_SECRET` changed between the two requests.
+A restart with a different `.env` file causes this. Sign in again.
+
+A sign-out on one device also ends the session on every other device of the same user. This
+is correct behaviour.
+
+---
+
+## `403` with "Request could not be verified"
+
+The CSRF check failed. Refresh the page and try again.
+
+If it continues, the `opshub_csrf` cookie is not reaching the browser, or the client does
+not send the `X-CSRF-Token` header. Check these two settings:
+
+- `CORS_ORIGIN` on the backend contains the exact frontend URL.
+- `CROSS_SITE_COOKIES` is `true` only when both ends use HTTPS.
+
+**Caution:** With `CROSS_SITE_COOKIES=true` on an HTTP address, the browser refuses the
+cookie and nobody can sign in.
+
+---
+
+## `403` with "has read-only access to this module"
+
+The role can see the module but cannot change it. This is correct behaviour, not a fault.
+`WRITE_PERMISSIONS` in `backend/src/middleware/auth.js` holds the list. See
+[access-management.md](../maintenance/access-management.md).
+
+---
+
+## The new password is refused
+
+The password policy refuses a password that is too short or too easy to guess. The message
+tells you which rule failed.
+
+A password must obey all of these rules:
+
+- The password has 12 characters or more.
+- The password does not start with a common word.
+- The password uses 5 different characters or more.
+- The password does not contain the part of your email address before the `@` sign.
+
+---
+
+## `429 Too many attempts`
+
+The rate limiter stopped the request. For a sign-in, wait 15 minutes. For the Shopify sync
+or the stock check, wait one minute. [security.md](../maintenance/security.md) lists each
+limit.
 
 ---
 

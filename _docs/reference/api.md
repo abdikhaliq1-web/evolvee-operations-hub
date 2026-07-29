@@ -10,31 +10,66 @@ update this.
 
 ## Conventions
 
-- **Auth:** all endpoints except `POST /api/auth/login` and `GET /api/health` require a
-  `Authorization: Bearer <JWT>` header. The token comes from `/api/auth/login`.
-- **Permissions:** most routes also require the caller's role to include a module key (see
-  `ROLE_PERMISSIONS` in `middleware/auth.js`). Listed per route below.
+**Authentication.** All endpoints need a session, except `POST /api/auth/login` and
+`GET /api/health`. There are two ways to supply the session:
+
+| Method | Used by | How |
+|---|---|---|
+| Session cookie | The web application | `POST /api/auth/login` sets the `opshub_token` cookie. Send the request with `credentials: 'include'`. |
+| Bearer token | Scripts and other servers | Send `Authorization: Bearer <JWT>`. Read the JWT from the `Set-Cookie` header of the login response. |
+
+The cookie is `HttpOnly`. The login response body does not contain the token.
+
+**CSRF.** A request that uses the cookie and changes data must send the
+`X-CSRF-Token` header. Take the value from the `opshub_csrf` cookie, which scripts can read.
+The check applies to `POST`, `PATCH`, `PUT`, and `DELETE`. A request without a correct
+header gets `403`. Bearer requests do not need the header.
+
+**Permissions.** Access has two parts:
+
+- To read a module, the role must hold the module in `ROLE_PERMISSIONS`.
+- To change a module, the role must also hold the module in `WRITE_PERMISSIONS`.
+
+Both maps are in `middleware/auth.js`. The tables below give the module for each group of
+routes. A role with read access but no write access gets `200` on `GET` and `403` on each
+other method.
+
+**Other conventions.**
+
 - **`:id`:** validated as a positive integer (`middleware/validateId.js`); a bad id is `400`.
-- **Bodies & responses:** JSON.
+- **Bodies and responses:** JSON. The body limit is 100 kB.
 - **Error statuses:**
 
 | Status | Meaning |
 |---|---|
-| `400` | Validation failed (missing/invalid field). |
-| `401` | No/invalid/expired token, or wrong login credentials. |
-| `403` | Authenticated, but your role lacks the module. |
+| `400` | Validation failed (missing or invalid field). |
+| `401` | No token, an invalid token, an expired token, or wrong login details. |
+| `403` | The role lacks the module, the role has read-only access, the action is restricted, or the CSRF check failed. |
 | `404` | Resource not found. |
-| `409` | Conflict (e.g. duplicate email). |
-| `429` | Rate limited (login/password endpoints). |
-| `502` | An upstream integration (Shopify/Zoho) failed — normalised from the real status so it never leaks a `401` to the client. |
+| `409` | Conflict, for example a duplicate email address. |
+| `429` | Rate limited. See [security.md](../maintenance/security.md) for the limits. |
+| `502` | An upstream integration (Shopify or Zoho) failed. The server changes the real status to `502`, so it never sends a `401` to the client. |
+
+The `403` messages are different for each cause, so you can tell them apart:
+
+- `does not have access to this module` — the role cannot see the module.
+- `has read-only access to this module` — the role can see the module but cannot change it.
+- `cannot perform this action` — the action is restricted to other roles.
+- `Request could not be verified` — the CSRF check failed.
 
 ---
 
 ## Health
 
 ### `GET /api/health` — no auth
-`200 { ok: true, time }`, or `{ ok: true, degraded: true }` when a source last failed, or
-`503 { ok: false, db_ok: false }` when the DB is unreachable.
+
+| Response | Meaning |
+|---|---|
+| `200 { ok: true, time }` | The application runs and the database answers. |
+| `503 { ok: false, time }` | The database query failed. |
+
+The endpoint reports only that the application is alive. To find which integration fails,
+use `GET /api/sync/status`, which needs the `sync` permission.
 
 ---
 
@@ -42,18 +77,36 @@ update this.
 
 | Method | Path | Auth | Body | Response |
 |---|---|---|---|---|
-| POST | `/login` | none (rate limited) | `{ email, password }` | `{ token, user: { id, email, name, role, permissions, role_permissions? } }` |
-| GET | `/me` | Bearer | — | `{ user }` (same shape as login's `user`) |
-| POST | `/password` | Bearer (rate limited) | `{ current_password, new_password }` | `{ ok: true, token }` (new token; old sessions invalidated) |
+| POST | `/login` | none (rate limited) | `{ email, password }` | `{ csrf_token, expires_at, user }` and two `Set-Cookie` headers |
+| GET | `/me` | session | — | `{ user, expires_at }` |
+| POST | `/logout` | session | — | `{ ok: true }`; both cookies deleted |
+| POST | `/password` | session (rate limited) | `{ current_password, new_password }` | `{ ok: true, csrf_token, expires_at }`; the cookie is replaced |
 
-- `role_permissions` (the full map) is only included for `admin`/`developer`.
-- `new_password` must be ≥ 8 chars. Wrong current password → `400`.
-- Login rate limit: per ip+email (10/15 min) and per ip (50/15 min) → `429`. Unknown email and
-  wrong password return the same `401` message (no user enumeration).
+The `user` object has this shape:
+
+```json
+{
+  "id": 1, "email": "…", "name": "…", "role": "admin",
+  "permissions": ["…"], "writable": ["…"],
+  "role_permissions": { }, "role_writable": { },
+  "alert_delete_roles": ["admin", "developer"]
+}
+```
+
+- `permissions` lists the modules the role can see. `writable` lists the modules the role can
+  change.
+- `role_permissions` and `role_writable` hold the full maps. The server sends them to
+  `admin` and `developer` only.
+- `alert_delete_roles` tells the client which roles can delete an alert.
+- `new_password` must obey the password policy. A wrong current password gives `400`.
+- `POST /logout` increases `token_version`. This ends the session on every device of that
+  user.
+- An unknown email address and a wrong password give the same `401` message. An attacker
+  therefore cannot find out which accounts exist.
 
 ---
 
-## Dashboard — `/api/dashboard` (Bearer; per-route permission)
+## Dashboard — `/api/dashboard` (session; per-route permission; read only)
 
 | Method | Path | Permission | Response |
 |---|---|---|---|
@@ -71,13 +124,13 @@ All dashboard data-source calls go through the integrations; a failing live sour
 
 ---
 
-## Products — `/api/products` (Bearer; permission `manufacturers`)
+## Products — `/api/products` (session; module `manufacturers`)
 
 | Method | Path | Body | Response |
 |---|---|---|---|
 | GET | `/` | — | `{ products[] }` (with `manufacturer_name`, `threshold`) |
 | GET | `/:id` | — | `{ product, photo, retail_price, current_inventory, metrics, trend[], reviews[], reorder_history[], production_runs[] }` |
-| POST | `/sync-shopify` | — | `{ synced, skipped, total }` — upserts SKU'd products from Shopify. |
+| POST | `/sync-shopify` | — | `{ synced, skipped, total }` — upserts SKU'd products from Shopify. Rate limited. |
 | POST | `/` | `{ sku, name, manufacturer_id?, threshold?, unit_cost? }` | `201 { product }` (product + threshold created in one transaction) |
 | PATCH | `/:id` | `{ sku?, name?, shopify_inventory_item_id? }` | `{ product }` |
 | PATCH | `/:id/manufacturer` | `{ manufacturer_id }` | `{ product }` |
@@ -88,7 +141,7 @@ All dashboard data-source calls go through the integrations; a failing live sour
 
 ---
 
-## Manufacturers — `/api/manufacturers` (Bearer; permission `manufacturers`)
+## Manufacturers — `/api/manufacturers` (session; module `manufacturers`)
 
 | Method | Path | Body | Response |
 |---|---|---|---|
@@ -106,18 +159,25 @@ clears a numeric field). Create/update are audit-logged.
 
 ---
 
-## Alerts — `/api/alerts` (Bearer; permission `alerts`)
+## Alerts — `/api/alerts` (session; module `alerts`)
 
 | Method | Path | Body / Query | Response |
 |---|---|---|---|
 | GET | `/` | `?status=open\|acknowledged\|resolved` (optional) | `{ alerts[≤200] }` (joined to product + manufacturer) |
 | PATCH | `/:id` | `{ status }` | `{ alert }` (`resolved` sets `resolved_at`) |
-| DELETE | `/:id` | — | `{ deleted: id }` |
+| DELETE | `/:id` | — | `{ deleted: id }` — `admin` and `developer` only. |
 | POST | `/check-now` | — | `{ checked, alerts_created, ran_at }` — runs the stock check immediately. |
+
+`DELETE /:id` is restricted to `admin` and `developer`. An `ops_manager` can acknowledge and
+resolve an alert but cannot delete one. Any other role gets `403`. The server writes an audit
+entry for each delete, because the alert row is then gone.
+
+`POST /check-now` calls Shopify. The limit is 5 requests per minute for each user, and 20
+requests per minute for all users together.
 
 ---
 
-## Production runs — `/api/production-runs` (Bearer; permission `manufacturers`)
+## Production runs — `/api/production-runs` (session; module `manufacturers`)
 
 | Method | Path | Body | Response |
 |---|---|---|---|
@@ -130,7 +190,7 @@ clears a numeric field). Create/update are audit-logged.
 
 ---
 
-## Users — `/api/users` (Bearer; permission `users` = admin only)
+## Users — `/api/users` (session; module `users`, which only `admin` holds)
 
 | Method | Path | Body | Response |
 |---|---|---|---|
@@ -138,12 +198,22 @@ clears a numeric field). Create/update are audit-logged.
 | POST | `/` | `{ email, password, full_name, role }` | `201 { user }` (409 if email exists) |
 | PATCH | `/:id` | any of `{ email, full_name, role, is_active, password }` | `{ user }` |
 
-`password` ≥ 8 chars; setting it bumps the target's `token_version` (kills their sessions).
-Guards: can't deactivate yourself; can't demote/deactivate the last active admin (`400`).
+To change `role`, `is_active`, or `password`, you must also send `admin_password` with your
+own password in it. A wrong or missing value gives `403`. A stolen session is therefore not
+enough to take over an account.
+
+A new `password` must obey the password policy in
+[security.md](../maintenance/security.md). A password change increases the target user's
+`token_version`, which ends that user's sessions on every device.
+
+Two guards give `400`: you cannot deactivate your own account, and you cannot demote or
+deactivate the last active admin.
+
+The server writes an audit entry for each create and each update.
 
 ---
 
-## Audit — `/api/audit` (Bearer; permission `users`)
+## Audit — `/api/audit` (session; module `users`)
 
 | Method | Path | Response |
 |---|---|---|
@@ -151,7 +221,7 @@ Guards: can't deactivate yourself; can't demote/deactivate the last active admin
 
 ---
 
-## Sync — `/api/sync` (Bearer; permission `sync`)
+## Sync — `/api/sync` (session; module `sync`)
 
 | Method | Path | Response |
 |---|---|---|

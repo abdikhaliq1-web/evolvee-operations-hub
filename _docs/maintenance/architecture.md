@@ -6,6 +6,9 @@ For a developer inheriting the code. What the system is made of, where each conc
 and how a request and a data sync actually move through it. Pair this with the file tree in
 [setup-help/project-structure.md](../setup-help/project-structure.md).
 
+For the security controls and the settings that keep them effective, read
+[security.md](security.md).
+
 ---
 
 ## The shape of it
@@ -31,7 +34,10 @@ lives in one place.
 | Entry point | `server.js` | Builds the Express app, mounts routes, serves `/api/health`, starts background tasks after `listen()`. |
 | Config | `config/env.js` | Reads and validates every environment variable. Throws on startup if something required is missing or a secret is too weak for a live deploy. |
 | Config | `config/db.js` | The `pg` connection pool and the `query()` helper everything else uses. |
-| Auth | `middleware/auth.js` | JWT verification (`authenticate`) and role→module permissions (`requirePermission`). The `ROLE_PERMISSIONS` map is the single source of truth for who sees what. |
+| Auth | `middleware/auth.js` | Session checks (`authenticate`), read access (`requirePermission`), write access (`requireWrite`), and restricted actions (`requireRole`). `ROLE_PERMISSIONS` says who can see a module. `WRITE_PERMISSIONS` says who can change it. |
+| Sessions | `middleware/session.js` | The `HttpOnly` session cookie, the readable CSRF cookie, and the double-submit CSRF check. |
+| Rate limits | `middleware/rateLimit.js` | The multi-rule limiter for the login, password, and Shopify endpoints. |
+| Passwords | `middleware/passwordPolicy.js` | The password rules for new users, admin resets, and self-service changes. |
 | Errors | `middleware/errorHandler.js` | Central error handler plus the `asyncRoute` wrapper so async route handlers can throw and still be caught. |
 | Routes | `routes/*.js` | One file per resource: `auth`, `users`, `dashboard`, `manufacturers`, `products`, `alerts`, `productionRuns`, `sync`, `audit`. Each mounts under `/api/<name>`. |
 | Jobs | `jobs/stockCheck.js` | The node-cron stock check. Compares Shopify stock against `reorder_thresholds` and raises `reorder_alerts`. |
@@ -43,13 +49,24 @@ lives in one place.
 
 ## How a request flows
 
-1. Browser calls `GET /api/<something>` with a `Bearer` JWT in the `Authorization` header.
-2. `authenticate` verifies the token, loads the user, and checks `is_active` and
-   `token_version` (a stale token from before a password reset is rejected here).
-3. `requirePermission('<module>')` checks the user's role against `ROLE_PERMISSIONS`.
-4. The route handler runs, usually calling a service, which calls the DB and/or an
+1. The browser calls `/api/<something>`. The browser attaches the `opshub_token` cookie. A
+   request that changes data also carries the `X-CSRF-Token` header.
+2. `authenticate` reads the token from the cookie, or from an `Authorization: Bearer` header
+   if there is no cookie.
+3. For a cookie request that changes data, `authenticate` compares the header against the
+   `opshub_csrf` cookie. A request that fails this check gets `403`.
+4. `authenticate` verifies the token, loads the user, and checks `is_active` and
+   `token_version`. A token from before a password reset fails here.
+5. `requirePermission('<module>')` checks the role against `ROLE_PERMISSIONS`.
+6. `requireWrite('<module>')` checks the role against `WRITE_PERMISSIONS`. It permits
+   `GET`, `HEAD`, and `OPTIONS` without a check.
+7. A few routes add `requireRole(...)`. `DELETE /api/alerts/:id` is one example.
+8. The route handler runs. It usually calls a service, which calls the database or an
    integration.
-5. Errors thrown anywhere land in `errorHandler`, which shapes a JSON error response.
+9. Each error goes to `errorHandler`, which makes the JSON error response.
+
+`requirePermission` and `requireWrite` are mounted one time for each router. They therefore
+cover every route on that router, and also each route that you add later.
 
 An upstream failure (Shopify 401, Zoho 5xx) is deliberately **never** passed through as its
 real status — `withSync()` in `apiClient.js` normalises it to `502` so a leaked `401`
@@ -96,8 +113,10 @@ it runs against the bundled Shopify data, so it works with no credentials.
 
 ## Frontend layout (`frontend/src/`)
 
-- `api.js` — the fetch wrapper. Attaches the JWT, and on a `401` clears the session and
-  redirects to login. This is why the backend must never leak an upstream `401`.
+- `api.js` — the fetch wrapper and the session store. It sends `credentials: 'include'` and
+  the CSRF header. On a `401` it clears the session and goes to the login page. This is why
+  the backend must never send an upstream `401`. The session token stays in an `HttpOnly`
+  cookie, so this code cannot read it.
 - `App.jsx` — routes plus the permission-filtered nav shell (a user only sees links for
   modules their role allows).
 - `pages/` — one component per screen: `Login`, `Dashboard`, `Manufacturers`,
@@ -105,9 +124,11 @@ it runs against the bundled Shopify data, so it works with no credentials.
   (routed at `/users`, shown in the nav as **"Team access"**), and `Account` (self-service
   password change).
 - `tableView.js` / `ui.jsx` — shared search/sort/CSV helpers used by the table pages.
-- A **"View as"** control (admin/developer only) previews the app as another role — it
-  changes only what's *shown*, never what the API allows. A session-expiry warning appears
-  ~2 minutes before the JWT lapses.
+- A **"View as"** control (admin and developer only) previews the application as another
+  role. It changes only what the page shows, never what the API permits. A warning appears
+  about 2 minutes before the session ends.
+- Each page hides its write controls when `canWrite('<module>')` is false, and also guards
+  the write functions. The server makes the same checks again.
 
 ---
 

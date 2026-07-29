@@ -38,6 +38,8 @@ Prefer to do it by hand, or something failed then follow the numbered steps belo
 ## Contents
 
 - [Quick start](#quick-start)
+- [Roles and access](#roles-and-access)
+- [Security](#security)
 1. [What's in this project](#1-whats-in-this-project)
 2. [Install the prerequisites](_docs/setup-help/prerequisites.md)
 3. [Set up the database](_docs/setup-help/database-setup.md)
@@ -48,7 +50,8 @@ Prefer to do it by hand, or something failed then follow the numbered steps belo
 8. [Troubleshooting](_docs/setup-help/troubleshooting.md)
 9. [Project structure reference](_docs/setup-help/project-structure.md)
 10. [Browser support](_docs/browser-support.md)
-11. [Architecture & maintenance reference](_docs/architecture.md) — for developers changing the code
+11. [Security controls](_docs/maintenance/security.md) — every control and its setting
+12. [Architecture & maintenance reference](_docs/maintenance/architecture.md) — for developers changing the code
 
 ---
 
@@ -74,9 +77,49 @@ Two systems in one app.
 - Automated stock checks (node-cron) that raise reorder alerts
 - Reorder history, communication log, production run tracker
 
-Roles are `admin`, `developer`, `ops_manager`, `marketing`, and `partner`. Each role
-sees only the modules it's allowed. Revenue is currently visible to the Ops Manager role;
-toggle that in `backend/src/middleware/auth.js`.
+## Roles and access
+
+The roles are `admin`, `developer`, `ops_manager`, `marketing`, and `partner`.
+
+Access has two parts. A role can **see** a module, and a role can **change** a module. The
+two parts are separate.
+
+| Role | Sees | Can change |
+|---|---|---|
+| `admin` | Everything, including user management | Alerts, manufacturers, products, users |
+| `developer` | Everything except user management | Alerts, manufacturers, products |
+| `ops_manager` | Operations modules and the manufacturer tool | Alerts, manufacturers, products |
+| `marketing` | Sales, customers, partner module | Nothing |
+| `partner` | Partner module only | Nothing |
+
+`backend/src/middleware/auth.js` holds both maps. `ROLE_PERMISSIONS` says what a role sees.
+`WRITE_PERMISSIONS` says what a role changes. To make a role read-only, delete the module
+from `WRITE_PERMISSIONS` only.
+
+Revenue is visible to the Ops Manager role. Change the `'revenue'` entry in
+`ROLE_PERMISSIONS` to alter this.
+
+Only an Admin or a Developer can delete an alert.
+
+---
+
+## Security
+
+The main controls:
+
+- The session token is in an `HttpOnly` cookie. Page scripts cannot read it.
+- Each request that changes data sends a CSRF token in the `X-CSRF-Token` header.
+- A password must have 12 characters or more, and must not be easy to guess.
+- Sign-out ends the session on the server, on all the user's devices.
+- The login endpoint has a limit for each account, and also for each IP address.
+- An admin must confirm the admin's own password to change a role, an active state, or a
+  password.
+- The audit log records each sign-in, each failed sign-in, and each change to a user.
+
+Read [`_docs/maintenance/security.md`](_docs/maintenance/security.md) for the full list, the
+settings, and what to do if a credential leaks.
+
+**Warning:** The demo passwords are public. Change each one before real use.
 
 ---
 

@@ -43,17 +43,31 @@ _docs\test-integrations.bat                               # connectivity only, o
 ```
 
 ### Module self-checks
-Several modules embed an assert-based self-check that runs when the file is executed directly —
-fast, dependency-free sanity checks on the tricky logic:
+
+Several modules hold an assert-based self-check. The check runs when you execute the file
+directly. The checks are fast, they need no framework, and they cover the difficult logic.
+
+Run the security checks from the `backend` folder. These modules read `backend/.env`, so the
+working folder is important:
 
 ```powershell
-node backend/src/services/apiClient.js        # cache + retry/backoff policy
-node backend/src/routes/auth.js               # login rate limiter
-node backend/src/routes/products.js           # product upsert builder
-node _docs/integration-tests/tableView.test.mjs   # search/sort/CSV
+cd backend
+node src/middleware/auth.js             # read/write permissions, restricted actions
+node src/middleware/session.js          # session cookies and the CSRF check
+node src/middleware/rateLimit.js        # the multi-rule rate limiter
+node src/middleware/passwordPolicy.js   # the password rules
+node src/services/apiClient.js          # cache, retry, and backoff policy
 ```
 
-Add one of these for any non-trivial pure function rather than reaching for a framework.
+Run the frontend check from the repository root:
+
+```powershell
+node _docs/integration-tests/tableView.test.mjs   # search, sort, and CSV
+```
+
+Each command prints a "passed" message. A failure prints an assertion error and stops.
+
+Write one of these checks for each non-trivial pure function. Do not add a test framework.
 
 ### Frontend build
 Vite is a build-time dependency, so confirm it still builds after frontend changes:
@@ -66,8 +80,7 @@ cd frontend; npm run build
 
 ## Branch workflow
 
-- **Branch per feature; no direct commits to the main branch.** (From the
-  [onboarding plan](../deployment/onboarding-and-growth-plan.md).)
+- **Branch per feature; no direct commits to the main branch.**
 - Keep a change to one concern — don't bundle a dependency bump with a feature; see
   [maintenance/updating-dependencies.md](../maintenance/updating-dependencies.md).
 - Before opening a PR: `npm test` green, the app runs, the frontend builds.
@@ -112,4 +125,4 @@ cd frontend; npm run build
 | Tables & relationships | [data-model.md](data-model.md) |
 | Frontend structure | [frontend.md](frontend.md) |
 | System overview | [../maintenance/architecture.md](../maintenance/architecture.md) |
-| Roadmap & roles | [../deployment/onboarding-and-growth-plan.md](../deployment/onboarding-and-growth-plan.md) |
+| Security controls | [../maintenance/security.md](../maintenance/security.md) |

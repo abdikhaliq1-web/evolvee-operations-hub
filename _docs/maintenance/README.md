@@ -28,8 +28,11 @@ questions live in the [../user-guide/](../user-guide/).
   steps, and rolling back a Render/Netlify deploy.
 - **[updating-dependencies.md](updating-dependencies.md)** — patching npm deps, deliberate
   upgrades, verifying with the tests, and bumping Node/Postgres.
-- **[access-management.md](access-management.md)** — roles, adding/resetting users, sessions,
-  and rotating `JWT_SECRET`.
+- **[access-management.md](access-management.md)** — roles, read access against write
+  access, adding and resetting users, sessions, and how to rotate `JWT_SECRET`.
+- **[security.md](security.md)** — every security control in one place: the session cookie,
+  CSRF, the password rules, the rate limits, the permission maps, the audit trail, the HTTP
+  headers, and what to do if a credential leaks.
 - **[common-issues.md](common-issues.md)** — operational failure runbook (symptom → cause →
   fix), distinct from the setup-focused
   [troubleshooting.md](../setup-help/troubleshooting.md).
