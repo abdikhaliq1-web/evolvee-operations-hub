@@ -83,3 +83,11 @@ services:
             value: sample
           - key: ZOHO_CRM_MODE
             value: sample
+
+          # QR partner dashboard. The key must match OPS_HUB_API_KEY in the Django app.
+          - key: PARTNER_DASHBOARD_MODE
+            value: sample
+          - key: PARTNER_DASHBOARD_BASE_URL
+            sync: false
+          - key: PARTNER_DASHBOARD_API_KEY
+            sync: false

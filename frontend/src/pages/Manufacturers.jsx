@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { api } from '../api.js';
 import { useTableView, SortHeader, SearchBox, onEnter } from '../ui.jsx';
 
-// Renders the "last contacted" table cell, flags it if stale.
 function lastContactCell(iso) {
     if (!iso) return <span className="pill warn">Never</span>;
 
@@ -16,7 +15,6 @@ function lastContactCell(iso) {
         : label;
 }
 
-// Manufacturers list page: Shows suppliers and lets user add new ones.
 export default function Manufacturers() {
     const [list, setList] = useState(null);
     const [error, setError] = useState('');
@@ -25,7 +23,6 @@ export default function Manufacturers() {
     const [saving, setSaving] = useState(false);
     const { query, setQuery, view, sort, toggleSort } = useTableView(list, ['name', 'country', 'notes']);
 
-    // Fetches the manufacturer list from the server.
     function load() {
         api('/manufacturers')
             .then(function (d) {
@@ -46,7 +43,6 @@ export default function Manufacturers() {
         });
     }
 
-    // Validates and submits the new manufacturer form.
     async function create() {
         if (saving) return;
         // Name is the only required field.

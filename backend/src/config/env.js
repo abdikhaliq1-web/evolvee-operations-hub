@@ -13,7 +13,6 @@ function required(name, fallback) {
     return value;
 }
 
-// checks if a db connection string points at localhost
 function hostIsLocal(connectionString) {
     try {
         const host = new URL(connectionString).hostname;
@@ -24,7 +23,7 @@ function hostIsLocal(connectionString) {
 }
 
 // Require a strong JWT secret whenever this isn't a purely local/dev setup.
-const anyLiveMode = ['SHOPIFY_MODE', 'ZOHO_CRM_MODE'].some((key) => (process.env[key] || '').toLowerCase() === 'live');
+const anyLiveMode = ['SHOPIFY_MODE', 'ZOHO_CRM_MODE', 'PARTNER_DASHBOARD_MODE'].some((key) => (process.env[key] || '').toLowerCase() === 'live');
 const remoteDatabase = !hostIsLocal(process.env.DATABASE_URL || '');
 const enforceStrongSecret = isProduction || anyLiveMode || remoteDatabase;
 
@@ -51,7 +50,6 @@ function requiredJwtSecret() {
     return value;
 }
 
-// splits CORS_ORIGIN env var into a clean list of allowed origins
 function parseCorsOrigins() {
     let raw = process.env.CORS_ORIGIN;
     if (!raw) {
@@ -90,7 +88,13 @@ const env = {
 
     modes: {
         shopify: envOr('SHOPIFY_MODE', 'off'),
-        zohoCrm: envOr('ZOHO_CRM_MODE', 'off')
+        zohoCrm: envOr('ZOHO_CRM_MODE', 'off'),
+        partnerDashboard: envOr('PARTNER_DASHBOARD_MODE', 'off')
+    },
+
+    partnerDashboard: {
+        baseUrl: envOr('PARTNER_DASHBOARD_BASE_URL', ''),
+        apiKey: envOr('PARTNER_DASHBOARD_API_KEY', '')
     },
 
     shopify: {

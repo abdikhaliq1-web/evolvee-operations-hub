@@ -1,4 +1,4 @@
-/* Evolvee Radiance Operations Hub: Design tokens & base styles */
+/* Evolvée Radiance Operations Hub — design tokens & base styles */
 :root {
     --bg: #faf8f5;          /* porcelain */
     --surface: #ffffff;
@@ -29,7 +29,7 @@
     --bad: #d97a7a;
 }
 
-/* A few base styles hardcode light colors; retint them for dark. */
+/* A few base styles hardcode light colors — retint them for dark. */
 [data-theme="dark"] td {
     border-bottom-color: var(--line);
 }

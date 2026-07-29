@@ -5,7 +5,6 @@ import { onEnter } from '../ui.jsx';
 
 const STATUSES = ['ordered', 'in_production', 'shipped', 'received', 'cancelled'];
 
-// Production runs page: lists runs and lets user start/update them.
 export default function ProductionRuns() {
     const [runs, setRuns] = useState(null);
     const [manufacturers, setManufacturers] = useState([]);
@@ -20,7 +19,6 @@ export default function ProductionRuns() {
         notes: '',
     });
 
-    // Loads production runs plus the manufacturer/product lists for the form.
     function load() {
         Promise.all([api('/production-runs'), api('/manufacturers'), api('/products')])
             .then(function ([r, m, p]) {
@@ -43,7 +41,6 @@ export default function ProductionRuns() {
         });
     }
 
-    // Validates and submits the new production run form.
     async function create() {
         if (saving) return;
 
@@ -74,7 +71,6 @@ export default function ProductionRuns() {
         }
     }
 
-    // Updates a run's status on the server.
     async function setStatus(id, status) {
         try {
             await api(`/production-runs/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) });

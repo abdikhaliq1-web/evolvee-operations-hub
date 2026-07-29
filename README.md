@@ -19,9 +19,13 @@ first, then double-click (or run from PowerShell):
 
 | File | What it does |
 |---|---|
-| `setup-demo.bat` | One-time setup with the full demo dataset (5 role users, manufacturers, products). Sample mode. All demo passwords are `radiance123`. |
-| `setup.bat` | One-time setup for a live server: seeds a single admin user, no demo data. Leave `ADMIN_PASSWORD` blank in `backend\.env` and it prints a generated one once. |
-| `run-server.bat` | Starts the backend and frontend, each in its own PowerShell window. |
+| `setup-demo.bat` | One-time setup with the full demo dataset (5 role users, manufacturers, products). Sample mode. All demo passwords are `radiance123`. Also installs and seeds the QR partner app and points the hub at it. |
+| `setup.bat` | One-time setup for a live server: seeds a single admin user, no demo data. Leave `ADMIN_PASSWORD` blank in `backend\.env` and it prints a generated one once. Also installs the QR partner app and pairs the shared API key. |
+| `run-server.bat` | Starts the backend, the frontend, and the QR partner app, each in its own PowerShell window. |
+
+The QR partner app needs [Python](_docs/setup-help/prerequisites.md#23-python-311-optional--qr-partner-app-only).
+Both setup scripts skip it with a note if `py` isn't installed — the rest of the hub
+still works, with the partner tile on bundled sample data.
 
 So a fresh demo install is: prerequisites, database, `setup-demo.bat`, `run-server.bat`,
 then open http://localhost:5173 (or what is shown on the frontend PS window). Both setup scripts copy `backend\.env.example` to `.env`
@@ -44,9 +48,7 @@ Prefer to do it by hand, or something failed then follow the numbered steps belo
 8. [Troubleshooting](_docs/setup-help/troubleshooting.md)
 9. [Project structure reference](_docs/setup-help/project-structure.md)
 10. [Browser support](_docs/browser-support.md)
-11. [Architecture & maintenance guide](_docs/maintenance/) — for developers changing or maintaining the code
-12. [User guide](_docs/user-guide/) — how to use each screen (for the people working in the app)
-13. [Developer reference](_docs/reference/) — API, data model, frontend internals, dev workflow
+11. [Architecture & maintenance reference](_docs/architecture.md) — for developers changing the code
 
 ---
 
@@ -61,7 +63,8 @@ Two systems in one app.
 - Revenue by day / week / month (Shopify)
 - Reorder alerts and manufacturing triggers
 - Order and shipping status (Shopify fulfilments)
-- QR partner dashboard (currently a placeholder)
+- QR partner dashboard — program KPIs and partner leaderboard pulled from the
+  `evolvee-partners` Django app (bundled sample data until `PARTNER_DASHBOARD_MODE=live`)
 - User management (Admin only)
 
 **Manufacturer POC & reorder management**

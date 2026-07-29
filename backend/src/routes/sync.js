@@ -8,7 +8,6 @@ const router = express.Router();
 
 router.use(authenticate, requirePermission('sync'));
 
-// returns integration sync status and which modes are configured
 router.get('/status', asyncRoute(async (req, res) => {
     const result = await query('SELECT * FROM sync_status ORDER BY source');
 

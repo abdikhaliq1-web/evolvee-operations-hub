@@ -1,10 +1,9 @@
 const { Pool, types } = require('pg');
 const env = require('./env');
 
-// keep DATE columns as plain strings, avoids timezone shifting
+// Keep DATE columns as raw strings instead of parsing to a JS Date (avoids timezone shift).
 types.setTypeParser(1082, (value) => value);
 
-// checks if a db connection string points at localhost
 function isLocalhost(connectionString) {
   try {
     const host = new URL(connectionString).hostname;
@@ -14,7 +13,7 @@ function isLocalhost(connectionString) {
   }
 }
 
-// works out the ssl settings for the db connection
+// Decides the SSL config for the pg pool based on env overrides and connection target.
 function databaseSsl() {
   const override = (env.databaseSsl || '').trim().toLowerCase();
 

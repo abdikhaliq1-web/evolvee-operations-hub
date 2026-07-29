@@ -1,0 +1,294 @@
+{% extends "base.html" %}
+
+{% block title %}Partner Dashboard — Evolvée Radiance{% endblock %}
+
+{% block head_extra %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+{% endblock %}
+
+{% block content %}
+<section class="dashboard">
+    <div class="dashboard-header">
+        <div>
+            <h1>Welcome, {{ partner.partner_name }}</h1>
+            {% if is_approved %}
+            <p class="muted">Creator ID: <strong>{{ partner.partner_code }}</strong> · Discount code: <strong>{{ partner.discount_code }}</strong> · {{ partner.commission_percentage }}% commission</p>
+            {% else %}
+            <p class="muted">{{ partner.commission_percentage }}% commission once approved</p>
+            {% endif %}
+        </div>
+        <span class="status-badge status-{{ partner.status }}">{{ partner.get_status_display }}</span>
+    </div>
+
+    {% if status_notifications %}
+    <div class="card notice notification-banner">
+        <h2 class="section-heading">Updates for you</h2>
+        {% for note in status_notifications %}
+        <div class="notification-item{% if not note.is_read %} notification-item--unread{% endif %}">
+            <strong>{{ note.title }}</strong>
+            {% if note.message %}<p>{{ note.message|linebreaksbr }}</p>{% endif %}
+            <a href="{% url 'partners:profile' %}" class="link-btn">View in profile</a>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if not is_approved %}
+    <div class="card notice">
+        <h2 class="section-heading">Application under review</h2>
+        <p>Your application is being reviewed. Once approved, you'll receive your creator ID, personalized discount code, QR code, and shareable referral link.</p>
+        <p class="muted">Typical approval timeline: <strong>1–3 business days</strong>.</p>
+        <ul class="checklist">
+            <li>Fast moderated application</li>
+            <li>QR code generated on approval</li>
+            <li>Discount code & trackable link ready to share</li>
+        </ul>
+    </div>
+    {% else %}
+
+    {% if not partner.has_payment_details %}
+    <div class="card notice">
+        <h2 class="section-heading">Add your payout details</h2>
+        <p>You're approved — add your payment method in your profile so our team can pay you easily.</p>
+        <a href="{% url 'partners:profile' %}" class="btn-ghost">Go to profile</a>
+    </div>
+    {% endif %}
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <span class="stat-label">QR Scans</span>
+            <span class="stat-value">{{ stats.total_clicks }}</span>
+            <span class="stat-sub">{{ stats.recent_clicks }} last 30 days</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">Conversions</span>
+            <span class="stat-value">{{ stats.total_conversions }}</span>
+            <span class="stat-sub">{{ stats.conversion_rate }}% rate</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">Revenue Generated</span>
+            <span class="stat-value">${{ stats.total_sales }}</span>
+        </div>
+        <div class="stat-card highlight">
+            <span class="stat-label">Commissions Earned</span>
+            <span class="stat-value">${{ stats.total_commission_earned }}</span>
+            <span class="stat-sub">${{ stats.pending_commission }} pending</span>
+        </div>
+    </div>
+
+    <div class="card chart-card">
+        <h2 class="section-heading">Performance Overview</h2>
+        <p class="muted">Real-time tracking of scans, conversions, revenue, and commissions.</p>
+        <div class="chart-wrap">
+            <canvas id="performanceChart"></canvas>
+        </div>
+    </div>
+
+    <div class="card share-card">
+        <h2 class="section-heading">Share & Earn</h2>
+        <p class="muted">Your creator ID is <strong>{{ partner.partner_code }}</strong> (for admin reference). Share your discount code <strong>{{ partner.discount_code }}</strong>, QR code, or referral link to earn commissions.</p>
+        <div class="share-panel">
+            <div class="share-qr">
+                {% if partner.qr_code_image %}
+                    <img src="{{ partner.qr_code_image.url }}" alt="Your partner QR code" class="qr-image" id="partner-qr-image">
+                    <a href="{{ partner.qr_code_image.url }}" download="qr_{{ partner.partner_code }}.png" class="btn-secondary">Download QR</a>
+                {% else %}
+                    <p class="muted">Your QR code is being generated… refresh in a moment.</p>
+                {% endif %}
+            </div>
+            <div class="share-links">
+                <div class="share-block">
+                    <label>Trackable share link</label>
+                    <div class="copy-row">
+                        <input type="text" readonly value="{{ tracking_url }}" id="tracking-url">
+                        <button type="button" class="btn-copy" data-type="tracking_link" data-target="tracking-url">Copy</button>
+                    </div>
+                </div>
+                <div class="share-block">
+                    <label>Store referral link</label>
+                    <div class="copy-row">
+                        <input type="text" readonly value="{{ partner.referral_url }}" id="referral-url">
+                        <button type="button" class="btn-copy" data-type="referral_link" data-target="referral-url">Copy</button>
+                    </div>
+                </div>
+                <div class="share-block">
+                    <label>Discount code</label>
+                    <div class="copy-row">
+                        <input type="text" readonly value="{{ partner.discount_code }}" id="discount-code">
+                        <button type="button" class="btn-copy" data-type="discount_code" data-target="discount-code">Copy</button>
+                    </div>
+                </div>
+                <div class="share-actions">
+                    <button type="button" class="btn-ghost" id="share-referral-btn">Share referral link</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="two-col">
+        <div class="card">
+            <h2 class="section-heading">Earnings & Payouts</h2>
+            <div class="earnings-grid">
+                <div>
+                    <span class="muted">Commission rate</span>
+                    <strong>{{ partner.commission_percentage }}%</strong>
+                </div>
+                <div>
+                    <span class="muted">Approved</span>
+                    <strong>${{ stats.approved_commission }}</strong>
+                </div>
+                <div>
+                    <span class="muted">Pending</span>
+                    <strong>${{ stats.pending_commission }}</strong>
+                </div>
+                <div>
+                    <span class="muted">Payout schedule</span>
+                    <strong>{{ payment_schedule }}</strong>
+                </div>
+            </div>
+            <p class="muted">Transparent earning visibility — pending and approved commissions are tracked separately. Payouts are processed on a {{ payment_schedule|lower }} schedule.</p>
+
+            {% if recent_payments %}
+            <h3>Recent Payouts</h3>
+            <ul class="list">
+                {% for payment in recent_payments %}
+                <li>
+                    <span>${{ payment.amount }} — {{ payment.get_status_display }}</span>
+                    <span class="muted">{{ payment.period_start }} to {{ payment.period_end }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="muted">No payouts yet. Approved commissions will be batched per the {{ payment_schedule|lower }} schedule.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="two-col">
+        <div class="card table-card">
+            <h2 class="section-heading">Recent Sales</h2>
+            {% if recent_sales %}
+            <div class="table-scroll">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Order</th>
+                            <th>Total</th>
+                            <th>Commission</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for sale in recent_sales %}
+                        <tr>
+                            <td>{{ sale.order_id }}</td>
+                            <td>${{ sale.total }}</td>
+                            <td>${{ sale.commission_amount }}</td>
+                            <td><span class="status-badge status-{{ sale.status }}">{{ sale.get_status_display }}</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="muted">No sales yet. Share your QR code to start earning commissions.</p>
+            {% endif %}
+        </div>
+
+        <div class="card">
+            <div class="card-header-row">
+                <h2 class="section-heading">Marketing Asset Hub</h2>
+                <a href="{% url 'partners:assets' %}" class="link-btn">View all</a>
+            </div>
+            {% if assets %}
+            <ul class="asset-list">
+                {% for asset in assets %}
+                <li>
+                    <div>
+                        <strong>{{ asset.title }}</strong>
+                        <span class="muted">{{ asset.get_asset_type_display }}</span>
+                    </div>
+                    {% if asset.content %}
+                    <p>{{ asset.content|truncatewords:20 }}</p>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="muted">Pre-made social posts, images, and campaign copy will appear here.</p>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</section>
+
+<form id="copy-log-form" method="post" action="{% url 'partners:log_copy' %}" class="hidden">
+    {% csrf_token %}
+    <input type="hidden" name="type" id="copy-type-input">
+</form>
+
+{{ chart_data|json_script:"chart-data" }}
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const chartEl = document.getElementById("performanceChart");
+    const chartData = JSON.parse(document.getElementById("chart-data").textContent);
+
+    if (chartEl && chartData.labels.length) {
+        new Chart(chartEl, {
+            type: "line",
+            data: {
+                labels: chartData.labels,
+                datasets: [
+                    { label: "Scans", data: chartData.clicks, borderColor: "#c9a87c", tension: 0.3 },
+                    { label: "Conversions", data: chartData.conversions, borderColor: "#2d6a4f", tension: 0.3 },
+                    { label: "Revenue ($)", data: chartData.revenue, borderColor: "#5c6b73", tension: 0.3 },
+                    { label: "Commission ($)", data: chartData.commission, borderColor: "#a8895e", tension: 0.3 },
+                ],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: "bottom" } },
+                scales: { y: { beginAtZero: true } },
+            },
+        });
+    }
+
+    document.querySelectorAll(".btn-copy").forEach((button) => {
+        button.addEventListener("click", () => {
+            const target = document.getElementById(button.dataset.target);
+            navigator.clipboard.writeText(target.value);
+            document.getElementById("copy-type-input").value = button.dataset.type;
+            document.getElementById("copy-log-form").submit();
+        });
+    });
+
+    const shareBtn = document.getElementById("share-referral-btn");
+    const trackingInput = document.getElementById("tracking-url");
+    if (shareBtn && trackingInput && navigator.share) {
+        shareBtn.addEventListener("click", async () => {
+            try {
+                await navigator.share({
+                    title: "Shop Evolvée Radiance",
+                    text: "Use my partner link to shop Evolvée Radiance!",
+                    url: trackingInput.value,
+                });
+            } catch (err) {
+                if (err.name !== "AbortError") {
+                    navigator.clipboard.writeText(trackingInput.value);
+                    shareBtn.textContent = "Link copied!";
+                    setTimeout(() => { shareBtn.textContent = "Share referral link"; }, 1500);
+                }
+            }
+        });
+    } else if (shareBtn && trackingInput) {
+        shareBtn.addEventListener("click", () => {
+            navigator.clipboard.writeText(trackingInput.value);
+            shareBtn.textContent = "Link copied!";
+            setTimeout(() => { shareBtn.textContent = "Share referral link"; }, 1500);
+        });
+    }
+});
+</script>
+{% endblock %}

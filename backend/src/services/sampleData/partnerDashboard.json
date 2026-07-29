@@ -1,0 +1,72 @@
+{
+  "kpis": {
+    "approved_partners": 6,
+    "pending_partners": 2,
+    "total_clicks": 1840,
+    "recent_clicks": 412,
+    "total_conversions": 96,
+    "conversion_rate": 5.2,
+    "total_revenue": 7420.5,
+    "total_commission": 742.05,
+    "pending_commission": 118.4,
+    "total_sales_count": 96
+  },
+  "leaderboard": [
+    {
+      "id": 1,
+      "partner_name": "Aria Lane",
+      "partner_code": "ER-A1B2C3",
+      "location": "Los Angeles, California, US",
+      "city": "Los Angeles",
+      "region": "California",
+      "country": "US",
+      "continent": "North America",
+      "clicks": 720,
+      "conversions": 41,
+      "revenue": 3120.0,
+      "commission": 312.0
+    },
+    {
+      "id": 2,
+      "partner_name": "Mia Fournier",
+      "partner_code": "ER-D4E5F6",
+      "location": "Manchester, England, GB",
+      "city": "Manchester",
+      "region": "England",
+      "country": "GB",
+      "continent": "Europe",
+      "clicks": 505,
+      "conversions": 27,
+      "revenue": 2180.5,
+      "commission": 218.05
+    },
+    {
+      "id": 3,
+      "partner_name": "Noor Haddad",
+      "partner_code": "ER-G7H8I9",
+      "location": "Dubai, Dubai, AE",
+      "city": "Dubai",
+      "region": "Dubai",
+      "country": "AE",
+      "continent": "Asia",
+      "clicks": 388,
+      "conversions": 18,
+      "revenue": 1420.0,
+      "commission": 142.0
+    },
+    {
+      "id": 4,
+      "partner_name": "Elena Rossi",
+      "partner_code": "ER-J1K2L3",
+      "location": "Milan, Lombardy, IT",
+      "city": "Milan",
+      "region": "Lombardy",
+      "country": "IT",
+      "continent": "Europe",
+      "clicks": 227,
+      "conversions": 10,
+      "revenue": 700.0,
+      "commission": 70.0
+    }
+  ]
+}

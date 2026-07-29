@@ -2,7 +2,12 @@ const jwt = require('jsonwebtoken');
 const env = require('../config/env');
 const { query } = require('../config/db');
 
-// who can access what: admin sees all, others get a limited set below
+// Permission model:
+//   admin        - everything, including user management
+//   developer    - everything except user management
+//   ops_manager  - operations modules + manufacturer tool (revenue visibility is included by default)
+//   marketing    - sales, customers, partner module
+//   partner      - partner module only
 
 const ROLE_PERMISSIONS = {
     admin:       ['inventory', 'sales', 'customers', 'revenue', 'shipping', 'alerts', 'partners', 'manufacturers', 'users', 'sync'],
@@ -12,13 +17,13 @@ const ROLE_PERMISSIONS = {
     partner:     ['partners'],
 };
 
-// pulls the token string out of an "Authorization: Bearer xxx" header
 function extractBearerToken(authorizationHeader) {
-    const match = /^Bearer +(.+)$/i.exec(authorizationHeader);
-    return match ? match[1] : null;
+    if (!authorizationHeader.startsWith('Bearer ')) {
+        return null;
+    }
+    return authorizationHeader.slice(7);
 }
 
-// checks the jwt token, loads the user, and attaches req.user
 async function authenticate(req, res, next) {
     const authorizationHeader = req.headers.authorization || '';
     const token = extractBearerToken(authorizationHeader);

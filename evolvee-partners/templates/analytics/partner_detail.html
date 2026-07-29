@@ -1,0 +1,180 @@
+{% extends "analytics/admin_base.html" %}
+
+{% block title %}{{ partner.partner_name }} — Admin{% endblock %}
+
+{% block head_extra %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+{% endblock %}
+
+{% block content %}
+<div class="analytics-header">
+    <div>
+        <p class="muted"><a href="{% url 'analytics:command_center' %}" class="link-btn">← Back to overview</a></p>
+        <h1>{{ partner.partner_name }}</h1>
+        <p class="muted">
+            {{ partner.partner_code|default:"Pending" }}{% if partner.discount_code %} · Discount {{ partner.discount_code }}{% endif %} · {{ partner.get_status_display }} · {{ partner.commission_percentage }}% commission
+            {% if partner.location_label != "—" %} · Based in {{ partner.location_label }}{% endif %}
+        </p>
+    </div>
+    <div class="analytics-actions">
+        <form method="get" class="filter-form">
+            <select name="days" onchange="this.form.submit()">
+                <option value="7" {% if selected_days == 7 %}selected{% endif %}>Last 7 days</option>
+                <option value="30" {% if selected_days == 30 %}selected{% endif %}>Last 30 days</option>
+                <option value="90" {% if selected_days == 90 %}selected{% endif %}>Last 90 days</option>
+            </select>
+        </form>
+        <a href="/admin/partners/partner/{{ partner.id }}/change/" class="btn-accent">Edit in Admin</a>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card"><span class="stat-label">QR Scans</span><span class="stat-value">{{ stats.total_clicks }}</span><span class="stat-sub">{{ stats.recent_clicks }} last 30d</span></div>
+    <div class="stat-card"><span class="stat-label">Conversions</span><span class="stat-value">{{ stats.total_conversions }}</span><span class="stat-sub">{{ stats.conversion_rate }}% rate</span></div>
+    <div class="stat-card"><span class="stat-label">Revenue</span><span class="stat-value">${{ stats.total_sales }}</span></div>
+    <div class="stat-card highlight"><span class="stat-label">Commissions</span><span class="stat-value">${{ stats.total_commission_earned }}</span><span class="stat-sub">${{ stats.pending_commission }} pending</span></div>
+</div>
+
+<div class="two-col">
+    <div class="card chart-card">
+        <h2>Performance</h2>
+        <div class="chart-wrap tall">
+            <canvas id="partnerChart"></canvas>
+        </div>
+    </div>
+    <div class="card">
+        <h2>Audience Regions</h2>
+        <p class="muted">Where this partner's audience is scanning from.</p>
+        <ul class="event-breakdown">
+            {% for row in click_regions %}
+            <li><span>{{ row.location }}</span><strong>{{ row.scans }} scans · {{ row.conversions }} conv.</strong></li>
+            {% empty %}
+            <li class="muted">No regional scan data for this partner yet.</li>
+            {% endfor %}
+        </ul>
+        {% if partner.social_handle %}
+        <p class="muted">Social: {{ partner.social_handle }}</p>
+        {% endif %}
+        {% if partner.has_payment_details %}
+        <p class="muted">Payout: {{ partner.get_payment_method_display }} — {{ partner.payment_details|truncatechars:80 }}</p>
+        {% else %}
+        <p class="muted">Payout details: not provided yet</p>
+        {% endif %}
+        {% if partner.bio %}
+        <p>{{ partner.bio }}</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="two-col">
+    <div class="card table-card">
+        <h2>Recent Scans</h2>
+        <div class="table-scroll">
+            <table class="data-table compact">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Location</th>
+                        <th>Converted</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for click in recent_clicks %}
+                    <tr>
+                        <td>{{ click.clicked_at|date:"M d, H:i" }}</td>
+                        <td>{{ click.location_label }}</td>
+                        <td>{% if click.converted %}Yes{% else %}No{% endif %}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3" class="muted">No scans yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card table-card">
+        <h2>Recent Sales</h2>
+        <div class="table-scroll">
+            <table class="data-table compact">
+                <thead>
+                    <tr>
+                        <th>Order</th>
+                        <th>Total</th>
+                        <th>Commission</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sale in recent_sales %}
+                    <tr>
+                        <td>{{ sale.order_id }}</td>
+                        <td>${{ sale.total }}</td>
+                        <td>${{ sale.commission_amount }}</td>
+                        <td>{{ sale.get_status_display }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="muted">No sales yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="card table-card">
+    <h2>Activity Log</h2>
+    <div class="table-scroll">
+        <table class="data-table compact">
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Event</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for activity in recent_activities %}
+                <tr>
+                    <td>{{ activity.created_at|date:"M d, H:i" }}</td>
+                    <td><span class="event-pill">{{ activity.get_event_type_display }}</span></td>
+                    <td>{{ activity.description|default:"—" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="3" class="muted">No activity logged.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ chart_data|json_script:"partner-chart-data" }}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const chartEl = document.getElementById("partnerChart");
+    const chartData = JSON.parse(document.getElementById("partner-chart-data").textContent);
+    if (!chartEl || !chartData.labels.length) return;
+
+    new Chart(chartEl, {
+        type: "line",
+        data: {
+            labels: chartData.labels,
+            datasets: [
+                { label: "Scans", data: chartData.clicks, borderColor: "#c9a87c", tension: 0.3 },
+                { label: "Conversions", data: chartData.conversions, borderColor: "#2d6a4f", tension: 0.3 },
+                { label: "Revenue ($)", data: chartData.revenue, borderColor: "#5c6b73", tension: 0.3 },
+                { label: "Commission ($)", data: chartData.commission, borderColor: "#a8895e", tension: 0.3 },
+            ],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: "bottom" } },
+            scales: { y: { beginAtZero: true } },
+        },
+    });
+});
+</script>
+{% endblock %}

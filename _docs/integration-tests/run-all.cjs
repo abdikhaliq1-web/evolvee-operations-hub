@@ -7,7 +7,7 @@ const tests = [
     require('./zohoCrm.test.cjs'),
     require('../../backend/src/services/integrations/shopifyReviews.selfcheck.cjs'),
     require('./customerPurchases.test.cjs'),
-    require('./alertSeverity.test.cjs'),
+    require('./partnerDashboard.test.cjs'),
     mjsCheck('productMetrics', './productMetrics.test.mjs'),
     mjsCheck('dashboardOrder', './dashboardOrder.test.mjs'),
     mjsCheck('tableView', './tableView.test.mjs'),

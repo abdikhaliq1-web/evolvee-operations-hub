@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<body style="font-family: Georgia, serif; color: #1a1a1a; line-height: 1.6;">
+    <p>Hello <strong>{{ partner.partner_name }}</strong>,</p>
+    <p>{{ body|linebreaksbr }}</p>
+    <p style="color: #6b6b6b; font-size: 14px;">
+        Creator ID: {{ partner.partner_code|default:"—" }}<br>
+        {% if partner.discount_code %}Discount code: {{ partner.discount_code }}<br>{% endif %}
+        Status: {{ partner.get_status_display }}
+    </p>
+    <p>
+        <a href="{{ portal_url }}" style="color: #a8895e;">Open partner portal</a>
+        &nbsp;·&nbsp;
+        <a href="{{ profile_url }}" style="color: #a8895e;">View profile</a>
+    </p>
+    <p style="color: #6b6b6b; font-size: 13px;">— {{ brand_name }} Partner Program</p>
+</body>
+</html>
