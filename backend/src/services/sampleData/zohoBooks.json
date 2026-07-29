@@ -1,0 +1,95 @@
+{
+  "reportPeriod": "Last 30 Days",
+  "currency": "USD",
+
+  "summary": {
+    "totalRevenue": 49016.00,
+    "costOfGoodsSold": 21754.00,
+    "otherExpenses": {
+      "shipping": 1250.00,
+      "marketing": 1850.00,
+      "packaging": 640.00,
+      "softwareSubscriptions": 420.00,
+      "utilities": 315.00,
+      "staffCosts": 3500.00
+    },
+    "totalOtherExpenses": 7975.00,
+    "totalExpenses": 29729.00,
+    "netProfit": 19287.00,
+    "profitMargin": 39.35
+  },
+  "products": [
+    {
+      "sku": "ER-SER-001",
+      "productName": "Radiance Renewal Serum 30ml",
+      "unitsSold": 412,
+      "revenue": 14008.00,
+      "costOfGoodSold": 6023.00,
+      "profit": 7985.00,
+      "profitMargin": 57.00
+    },
+    {
+      "sku": "ER-CRM-003",
+      "productName": "Hydra-Silk Day Cream 50ml",
+      "unitsSold": 305,
+      "revenue": 9760.00,
+      "costOfGoodSold": 4270.00,
+      "profit": 5490.00,
+      "profitMargin": 56.25
+    },
+    {
+      "sku": "ER-OIL-002",
+      "productName": "Golden Glow Face Oil 25ml",
+      "unitsSold": 268,
+      "revenue": 7504.00,
+      "costOfGoodSold": 3152.00,
+      "profit": 4352.00,
+      "profitMargin": 58.00
+    },
+    {
+      "sku": "ER-KIT-008",
+      "productName": "Starter Ritual Kit",
+      "unitsSold": 73,
+      "revenue": 5840.00,
+      "costOfGoodSold": 2920.00,
+      "profit": 2920.00,
+      "profitMargin": 50.00
+    },
+    {
+      "sku": "ER-BLM-005",
+      "productName": "Soothing Lip Balm 10ml",
+      "unitsSold": 530,
+      "revenue": 4240.00,
+      "costOfGoodSold": 1749.00,
+      "profit": 2491.00,
+      "profitMargin": 58.75
+    },
+    {
+      "sku": "ER-CRM-004",
+      "productName": "Night Repair Cream 50ml",
+      "unitsSold": 84,
+      "revenue": 3192.00,
+      "costOfGoodSold": 1564.00,
+      "profit": 1628.00,
+      "profitMargin": 51.00
+    },
+    {
+      "sku": "ER-TNR-007",
+      "productName": "Rosewater Toner 100ml",
+      "unitsSold": 149,
+      "revenue": 2682.00,
+      "costOfGoodSold": 1234.00,
+      "profit": 1448.00,
+      "profitMargin": 53.99
+    },
+    {
+      "sku": "ER-MSK-006",
+      "productName": "Clay Detox Mask 75ml",
+      "unitsSold": 61,
+      "revenue": 1830.00,
+      "costOfGoodSold": 842.00,
+      "profit": 988.00,
+      "profitMargin": 53.99
+    }
+  ]
+}
