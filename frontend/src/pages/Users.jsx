@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { api } from '../api.js';
+import { api, canWrite } from '../api.js';
 import { useTableView, SortHeader, SearchBox, onEnter } from '../ui.jsx';
 
 const ROLES = ['admin', 'developer', 'ops_manager', 'marketing', 'partner'];
 
 const EMPTY_FORM = { email: '', full_name: '', password: '', role: 'marketing' };
+
+const MIN_PASSWORD = 12;
 
 export default function Users() {
     const [users, setUsers] = useState(null);
@@ -13,7 +15,11 @@ export default function Users() {
     // Which user's password is being reset, and the value typed so far.
     const [resetId, setResetId] = useState(null);
     const [resetPwd, setResetPwd] = useState('');
+    // The server re-checks the acting admin's own password before any role, status,
+    // or password change, so a stolen session alone can't take over accounts.
+    const [adminPwd, setAdminPwd] = useState('');
     const [busy, setBusy] = useState(false);
+    const writable = canWrite('users');
     const { query, setQuery, view, sort, toggleSort } = useTableView(users, ['full_name', 'email', 'role']);
 
     function load() {
@@ -29,7 +35,7 @@ export default function Users() {
     }
 
     async function createUser() {
-        if (busy) return;
+        if (busy || !writable) return;
 
         setError('');
         setBusy(true);
@@ -44,12 +50,26 @@ export default function Users() {
         }
     }
 
+    const SENSITIVE_FIELDS = ['role', 'is_active', 'password'];
+
     async function patchUser(id, body) {
+        if (!writable) return false;
+
+        const sensitive = SENSITIVE_FIELDS.some((field) => field in body);
+
+        if (sensitive && !adminPwd) {
+            setError('Enter your own password below to confirm role, status, and password changes.');
+            return false;
+        }
+
         try {
-            await api(`/users/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
-            load();
+            const payload = sensitive ? { ...body, admin_password: adminPwd } : body;
+            await api(`/users/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+            await load();
+            return true;
         } catch (e) {
             setError(e.message);
+            return false;
         }
     }
 
@@ -67,15 +87,16 @@ export default function Users() {
 
     async function submitReset(user) {
         if (busy) return;
-        if (resetPwd.length < 8) {
-            setError('Password must be at least 8 characters.');
+        if (resetPwd.length < MIN_PASSWORD) {
+            setError(`Password must be at least ${MIN_PASSWORD} characters.`);
             return;
         }
         setError('');
         setBusy(true);
         try {
-            await patchUser(user.id, { password: resetPwd });
-            cancelReset();
+            if (await patchUser(user.id, { password: resetPwd })) {
+                cancelReset();
+            }
         } finally {
             setBusy(false);
         }
@@ -103,6 +124,7 @@ export default function Users() {
                     <select
                         value={user.role}
                         onChange={(e) => patchUser(user.id, { role: e.target.value })}
+                        disabled={!writable}
                         style={{ maxWidth: 150 }}
                     >
                         {renderRoleOptions()}
@@ -110,6 +132,8 @@ export default function Users() {
                 </td>
                 <td>{renderStatusPill(user.is_active)}</td>
                 <td>
+                    {!writable ? null : (
+                    <>
                     <button
                         className="link"
                         onClick={() => patchUser(user.id, { is_active: !user.is_active })}
@@ -122,7 +146,7 @@ export default function Users() {
                             <input
                                 type="password"
                                 autoComplete="new-password"
-                                placeholder="New password (min 8)"
+                                placeholder={`New password (min ${MIN_PASSWORD})`}
                                 value={resetPwd}
                                 onChange={(e) => setResetPwd(e.target.value)}
                                 onKeyDown={onEnter(() => submitReset(user))}
@@ -136,6 +160,8 @@ export default function Users() {
                             Reset password
                         </button>
                     )}
+                    </>
+                    )}
                 </td>
             </tr>
         );
@@ -148,6 +174,7 @@ export default function Users() {
 
             {error && <div className="banner error">{error}</div>}
 
+            {writable && (
             <div className="tile" style={{ marginBottom: 18 }}>
                 <h2>Add team member</h2>
                 <div className="row">
@@ -165,7 +192,7 @@ export default function Users() {
                         onKeyDown={onEnter(createUser)}
                     />
                     <input
-                        placeholder="Password (min 8 chars)"
+                        placeholder={`Password (min ${MIN_PASSWORD} chars)`}
                         type="password"
                         value={form.password}
                         onChange={(e) => updateForm('password', e.target.value)}
@@ -183,6 +210,7 @@ export default function Users() {
                     </button>
                 </div>
             </div>
+            )}
 
             {!users ? (
                 <p className="empty">Loading…</p>
@@ -194,6 +222,16 @@ export default function Users() {
                             setQuery={setQuery}
                             placeholder="Search name, email, role…"
                         />
+                        {writable && (
+                            <input
+                                type="password"
+                                autoComplete="current-password"
+                                placeholder="Your password (to confirm changes)"
+                                value={adminPwd}
+                                onChange={(e) => setAdminPwd(e.target.value)}
+                                style={{ maxWidth: 260 }}
+                            />
+                        )}
                     </div>
                     <table>
                         <thead>

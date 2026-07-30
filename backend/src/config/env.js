@@ -68,6 +68,16 @@ function envOr(name, fallback) {
 
 const port = parseInt(process.env.PORT || '4000', 10);
 
+// Number of proxy hops to trust for req.ip. Production deploys (Render, Netlify) sit
+// behind exactly one; a direct-to-internet deploy must leave this at 0 or X-Forwarded-For
+// becomes client-controlled and the rate limits are trivially bypassed.
+const trustProxy = parseInt(process.env.TRUST_PROXY || (isProduction ? '1' : '0'), 10) || 0;
+
+// True when the frontend is served from a different site than this API (the Netlify +
+// Render setup), which forces the session cookie to SameSite=None; Secure. Locally the
+// Vite dev proxy makes everything same-origin, so the stricter Lax cookie works.
+const crossSiteCookies = (process.env.CROSS_SITE_COOKIES || (isProduction ? 'true' : 'false')).toLowerCase() === 'true';
+
 // AUTO_SEED=true means 'demo'; 'admin' seeds a single admin instead.
 const seedModeRaw = (process.env.AUTO_SEED || 'false').toLowerCase();
 const seedMode = seedModeRaw === 'true' ? 'demo' : seedModeRaw;
@@ -75,6 +85,8 @@ const autoSeed = seedMode === 'demo' || seedMode === 'admin';
 
 const env = {
     port: port,
+    trustProxy: trustProxy,
+    crossSiteCookies: crossSiteCookies,
     isProduction: isProduction,
     databaseUrl: required('DATABASE_URL'),
     databaseSsl: envOr('DATABASE_SSL', ''),

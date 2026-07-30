@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { api } from '../api.js';
+import { api, canWrite } from '../api.js';
 import { statusPillClass, formatStatus } from '../status.js';
 import { onEnter } from '../ui.jsx';
 
@@ -18,6 +18,7 @@ export default function ProductionRuns() {
         expected_date: '',
         notes: '',
     });
+    const writable = canWrite('manufacturers');
 
     function load() {
         Promise.all([api('/production-runs'), api('/manufacturers'), api('/products')])
@@ -96,6 +97,7 @@ export default function ProductionRuns() {
                 <div className="banner error">{error}</div>
             )}
 
+            {writable && (
             <div className="tile" style={{ marginBottom: 18 }}>
                 <h2>Start a production run</h2>
                 <div className="row">
@@ -151,6 +153,7 @@ export default function ProductionRuns() {
                     </button>
                 </div>
             </div>
+            )}
 
             {!runs ? (
                 <p className="empty">Loading…</p>
@@ -168,7 +171,7 @@ export default function ProductionRuns() {
                                 <th className="num">Qty</th>
                                 <th>Expected</th>
                                 <th>Status</th>
-                                <th>Move to…</th>
+                                {writable && <th>Move to…</th>}
                             </tr>
                         </thead>
                         <tbody>
@@ -188,6 +191,7 @@ export default function ProductionRuns() {
                                                 {formatStatus(r.status)}
                                             </span>
                                         </td>
+                                        {writable && (
                                         <td>
                                             <select
                                                 value=""
@@ -206,6 +210,7 @@ export default function ProductionRuns() {
                                                 })}
                                             </select>
                                         </td>
+                                        )}
                                     </tr>
                                 );
                             })}

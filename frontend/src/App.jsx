@@ -2,13 +2,14 @@ import React from 'react';
 import { Routes, Route, NavLink, Navigate, useNavigate, Outlet } from 'react-router-dom';
 import {
     getUser,
-    getToken,
+    hasSession,
     clearSession,
     getEffectivePermissions,
     getViewAsRole,
     setViewAsRole,
     viewableRoles,
     getTokenExp,
+    signOut,
 } from './api.js';
 import Login from './pages/Login.jsx';
 import Dashboard from './pages/Dashboard.jsx';
@@ -121,8 +122,10 @@ function Shell() {
     const navigate = useNavigate();
     const can = (p) => getEffectivePermissions().includes(p);
 
-    // No token means not signed in.
-    if (!getToken()) {
+    // The session cookie is httpOnly and invisible here; its readable CSRF companion
+    // plus the stored user is what tells us a session exists. The server is still the
+    // only authority — a forged localStorage entry just earns a 401 on first request.
+    if (!hasSession()) {
         return <Navigate to="/login" replace />;
     }
 
@@ -172,8 +175,8 @@ function Shell() {
                         <NavLink to="/account">Account</NavLink>
                         <ThemeToggle />
                         <button
-                            onClick={() => {
-                                clearSession();
+                            onClick={async () => {
+                                await signOut();
                                 navigate('/login');
                             }}
                         >

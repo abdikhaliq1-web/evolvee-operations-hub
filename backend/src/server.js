@@ -9,7 +9,12 @@ const { seed } = require('../db/seed');
 const { seedAdmin } = require('../db/seedAdmin');
 
 const app = express();
-app.set('trust proxy', 1);
+
+// Only trust X-Forwarded-For when something is actually in front of us. Trusting it
+// unconditionally lets any client spoof req.ip and walk straight past the rate limits.
+if (env.trustProxy > 0) {
+    app.set('trust proxy', env.trustProxy);
+}
 
 // Checks incoming Origin header against the configured allowlist.
 function isAllowedOrigin(origin, callback) {
@@ -22,29 +27,34 @@ function isAllowedOrigin(origin, callback) {
     return callback(null, allowed);
 }
 
-app.use(cors({ origin: isAllowedOrigin }));
-app.use(express.json());
+// credentials:true is required for the session cookie to travel cross-site. It only
+// applies to origins isAllowedOrigin approves — a rejected origin gets no CORS headers
+// at all, so the browser blocks the response before any cookie is read.
+app.use(cors({ origin: isAllowedOrigin, credentials: true, allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'] }));
+app.use(express.json({ limit: '100kb' }));
 
 // Basic security headers on every response.
 app.use(function securityHeaders(req, res, next) {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('Referrer-Policy', 'no-referrer');
+    // This API only ever returns JSON, so nothing it serves should load or run anything.
+    res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'");
     if (env.isProduction) {
         res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
     }
     next();
 });
 
+// Unauthenticated: reports liveness only. Which integrations are failing is in
+// /api/sync/status, behind auth.
 app.get('/api/health', async function (req, res) {
     const health = { ok: true, time: new Date().toISOString() };
 
     try {
-        const result = await query('SELECT ok FROM sync_status');
-        health.degraded = result.rows.some(function (r) { return r.ok === false; });
+        await query('SELECT 1');
     } catch (err) {
         health.ok = false;
-        health.db_ok = false;
     }
 
     res.status(health.ok ? 200 : 503).json(health);
@@ -94,11 +104,16 @@ async function startBackgroundTasks() {
 process.on('unhandledRejection', function (reason) {
     console.error('Unhandled promise rejection:', reason);
 });
+
+// After an uncaught exception the process state is unknown — serving further requests
+// from it risks acting on corrupt state. Log, then let the platform restart us.
 process.on('uncaughtException', function (err) {
     console.error('Uncaught exception:', err);
+    server.close(function () { process.exit(1); });
+    setTimeout(function () { process.exit(1); }, 5000).unref();
 });
 
-app.listen(env.port, function () {
+const server = app.listen(env.port, function () {
     console.log('Operations Hub backend running on port ' + env.port);
     startBackgroundTasks();
 });

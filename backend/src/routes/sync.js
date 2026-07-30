@@ -1,12 +1,12 @@
 const express = require('express');
 const { query } = require('../config/db');
-const { authenticate, requirePermission } = require('../middleware/auth');
+const { authenticate, requirePermission, requireWrite } = require('../middleware/auth');
 const { asyncRoute } = require('../middleware/errorHandler');
 const env = require('../config/env');
 
 const router = express.Router();
 
-router.use(authenticate, requirePermission('sync'));
+router.use(authenticate, requirePermission('sync'), requireWrite('sync'));
 
 router.get('/status', asyncRoute(async (req, res) => {
     const result = await query('SELECT * FROM sync_status ORDER BY source');

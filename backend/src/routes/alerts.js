@@ -1,14 +1,26 @@
 const express = require('express');
 const { query } = require('../config/db');
-const { authenticate, requirePermission } = require('../middleware/auth');
+const { authenticate, requirePermission, requireWrite, requireRole, ALERT_DELETE_ROLES } = require('../middleware/auth');
 const { asyncRoute } = require('../middleware/errorHandler');
 const { validateId } = require('../middleware/validateId');
 const { runStockCheck } = require('../jobs/stockCheck');
+const { rateLimit } = require('../middleware/rateLimit');
+const { recordAudit } = require('../services/audit');
 
 const router = express.Router();
 
-router.use(authenticate, requirePermission('alerts'));
+router.use(authenticate, requirePermission('alerts'), requireWrite('alerts'));
 router.param('id', validateId);
+
+// Each run calls Shopify. Unthrottled, this is a free way to exhaust the store's
+// API quota from any logged-in account.
+const checkRateLimit = rateLimit(
+    [
+        { name: 'check-user', key: (req) => req.user.id, windowMs: 60 * 1000, max: 5 },
+        { name: 'check-all', key: () => 'global', windowMs: 60 * 1000, max: 20 },
+    ],
+    'Stock check was run too recently. Please wait a minute and try again.'
+);
 
 router.get('/', asyncRoute(async (req, res) => {
     const status = req.query.status;
@@ -61,18 +73,33 @@ router.patch('/:id', asyncRoute(async (req, res) => {
     res.json({ alert: alert });
 }));
 
-router.delete('/:id', asyncRoute(async (req, res) => {
+router.delete('/:id', requireRole(...ALERT_DELETE_ROLES), asyncRoute(async (req, res) => {
     const id = Number(req.params.id);
-    const result = await query('DELETE FROM reorder_alerts WHERE id = $1 RETURNING id', [id]);
+    const result = await query(
+        'DELETE FROM reorder_alerts WHERE id = $1 RETURNING id, product_id, stock_level, threshold, status',
+        [id]
+    );
+    const deleted = result.rows[0];
 
-    if (!result.rows[0]) {
+    if (!deleted) {
         return res.status(404).json({ error: 'Alert not found.' });
     }
+
+    // The row is gone, so the audit entry is the only remaining record that it existed.
+    await recordAudit(req, {
+        action: 'delete', entity: 'reorder_alert', entityId: id,
+        details: {
+            product_id: deleted.product_id,
+            stock_level: deleted.stock_level,
+            threshold: deleted.threshold,
+            status: deleted.status,
+        },
+    });
 
     res.json({ deleted: id });
 }));
 
-router.post('/check-now', asyncRoute(async (req, res) => {
+router.post('/check-now', checkRateLimit, asyncRoute(async (req, res) => {
     const result = await runStockCheck();
     res.json(result);
 }));

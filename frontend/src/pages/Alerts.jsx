@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api } from '../api.js';
+import { api, canWrite, canDeleteAlerts } from '../api.js';
 import { useTableView, SortHeader, SearchBox, useFlash } from '../ui.jsx';
 
 const STATUS_FILTERS = [
@@ -18,6 +18,8 @@ export default function Alerts() {
     const [filter, setFilter] = useState('');
     const { query, setQuery, view, sort, toggleSort } = useTableView(alerts, ['sku', 'product_name', 'manufacturer']);
     const loadSeq = useRef(0);
+    const writable = canWrite('alerts');
+    const deletable = canDeleteAlerts();
 
     function load() {
         // Guard against a stale response landing after a newer request (e.g. filter changed mid-flight).
@@ -99,11 +101,13 @@ export default function Alerts() {
             {error && <div className="banner error">{error}</div>}
             {notice && <div className="banner notice">{notice}</div>}
 
-            <p>
-                <button className="primary" onClick={checkNow} disabled={checking}>
-                    {checking ? 'Checking…' : 'Check stock now'}
-                </button>
-            </p>
+            {writable && (
+                <p>
+                    <button className="primary" onClick={checkNow} disabled={checking}>
+                        {checking ? 'Checking…' : 'Check stock now'}
+                    </button>
+                </p>
+            )}
 
             <div className="toolbar">
                 <SearchBox
@@ -168,7 +172,7 @@ export default function Alerts() {
                                                 Reorder
                                             </Link>
                                         )}
-                                        {alert.status === 'open' && (
+                                        {writable && alert.status === 'open' && (
                                             <button
                                                 className="link"
                                                 onClick={() => setStatus(alert.id, 'acknowledged')}
@@ -176,7 +180,7 @@ export default function Alerts() {
                                                 Acknowledge
                                             </button>
                                         )}
-                                        {alert.status !== 'resolved' && (
+                                        {writable && alert.status !== 'resolved' && (
                                             <button
                                                 className="link"
                                                 onClick={() => setStatus(alert.id, 'resolved')}
@@ -184,12 +188,14 @@ export default function Alerts() {
                                                 Resolve
                                             </button>
                                         )}
-                                        <button
-                                            className="link"
-                                            onClick={() => remove(alert.id)}
-                                        >
-                                            Delete
-                                        </button>
+                                        {deletable && (
+                                            <button
+                                                className="link"
+                                                onClick={() => remove(alert.id)}
+                                            >
+                                                Delete
+                                            </button>
+                                        )}
                                     </td>
                                 </tr>
                             ))}

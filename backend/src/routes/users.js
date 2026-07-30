@@ -1,16 +1,38 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const { query, pool } = require('../config/db');
-const { authenticate, requirePermission, ROLE_PERMISSIONS } = require('../middleware/auth');
+const { authenticate, requirePermission, requireWrite, ROLE_PERMISSIONS } = require('../middleware/auth');
 const { asyncRoute } = require('../middleware/errorHandler');
 const { validateId } = require('../middleware/validateId');
+const { passwordProblem } = require('../middleware/passwordPolicy');
+const { recordAudit } = require('../services/audit');
 
 const router = express.Router();
 
-router.use(authenticate, requirePermission('users'));
+router.use(authenticate, requirePermission('users'), requireWrite('users'));
 router.param('id', validateId);
 
 const ROLES = Object.keys(ROLE_PERMISSIONS);
+
+// Changing someone's role, password, or active state is a full account takeover in one
+// request, so a stolen admin token alone must not be enough — re-prompt for the acting
+// admin's own password.
+async function reauthenticated(req) {
+    const supplied = req.body ? req.body.admin_password : undefined;
+
+    if (!supplied) {
+        return false;
+    }
+
+    const result = await query('SELECT password_hash FROM users WHERE id = $1', [req.user.id]);
+    const actor = result.rows[0];
+
+    if (!actor) {
+        return false;
+    }
+
+    return bcrypt.compare(String(supplied), actor.password_hash);
+}
 
 router.get('/', asyncRoute(async (req, res) => {
     const sql = 'SELECT id, email, full_name, role, is_active, created_at FROM users ORDER BY id';
@@ -36,12 +58,14 @@ router.post('/', asyncRoute(async (req, res) => {
         });
     }
 
-    if (password.length < 8) {
-        return res.status(400).json({ error: 'Password must be at least 8 characters.' });
+    const normalisedEmail = email.toLowerCase().trim();
+    const problem = passwordProblem(password, normalisedEmail);
+
+    if (problem) {
+        return res.status(400).json({ error: problem });
     }
 
-    const hash = bcrypt.hashSync(password, 10);
-    const normalisedEmail = email.toLowerCase().trim();
+    const hash = await bcrypt.hash(String(password), 10);
 
     const sql =
         'INSERT INTO users (email, password_hash, full_name, role) VALUES ($1, $2, $3, $4) ' +
@@ -53,6 +77,11 @@ router.post('/', asyncRoute(async (req, res) => {
     if (!result.rows[0]) {
         return res.status(409).json({ error: 'A user with that email already exists.' });
     }
+
+    await recordAudit(req, {
+        action: 'create', entity: 'user', entityId: result.rows[0].id,
+        details: { email: normalisedEmail, role: role },
+    });
 
     res.status(201).json({ user: result.rows[0] });
 }));
@@ -85,8 +114,19 @@ router.patch('/:id', asyncRoute(async (req, res) => {
         return res.status(400).json({ error: 'role must be one of: ' + allowed });
     }
 
-    if (password !== undefined && String(password).length < 8) {
-        return res.status(400).json({ error: 'Password must be at least 8 characters.' });
+    if (password !== undefined) {
+        const problem = passwordProblem(password, email === undefined ? current.email : email);
+        if (problem) {
+            return res.status(400).json({ error: problem });
+        }
+    }
+
+    const sensitive = password !== undefined || role !== undefined || isActive !== undefined;
+
+    if (sensitive && !(await reauthenticated(req))) {
+        return res.status(403).json({
+            error: 'Confirm your own password to change a role, password, or account status.'
+        });
     }
 
     // Don't let the last active admin lose admin access.
@@ -120,7 +160,7 @@ router.patch('/:id', asyncRoute(async (req, res) => {
     if (role !== undefined) { set.push(`role = $${i++}`); values.push(role); }
     if (isActive !== undefined) { set.push(`is_active = $${i++}`); values.push(Boolean(isActive)); }
     if (password !== undefined) {
-        set.push(`password_hash = $${i++}`); values.push(bcrypt.hashSync(password, 10));
+        set.push(`password_hash = $${i++}`); values.push(await bcrypt.hash(String(password), 10));
         // Invalidate the target user's existing sessions when their password is reset.
         set.push('token_version = token_version + 1');
     }
@@ -156,6 +196,18 @@ router.patch('/:id', asyncRoute(async (req, res) => {
         'SELECT id, email, full_name, role, is_active FROM users WHERE id = $1',
         [id]
     );
+
+    if (set.length > 0) {
+        const changed = {};
+        if (fullName !== undefined) changed.full_name = fullName;
+        if (email !== undefined) changed.email = updated.rows[0].email;
+        if (role !== undefined) changed.role = { from: current.role, to: role };
+        if (isActive !== undefined) changed.is_active = { from: current.is_active, to: Boolean(isActive) };
+        if (password !== undefined) changed.password_reset = true;
+
+        await recordAudit(req, { action: 'update', entity: 'user', entityId: id, details: changed });
+    }
+
     res.json({ user: updated.rows[0] });
 }));
 

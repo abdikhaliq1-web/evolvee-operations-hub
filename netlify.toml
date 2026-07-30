@@ -11,3 +11,22 @@
     from = "/*"
     to = "/index.html"
     status = 200
+
+# The session token lives in localStorage, so any injected script that runs here can
+# read it. These headers are what stops third-party script from running at all.
+#
+# connect-src must list the backend origin. The default matches the Render service in
+# render.yaml — narrow it to your exact backend URL once you know it, e.g.
+# https://operations-hub-api.onrender.com.
+#
+# 'unsafe-inline' is present for style-src only, because the UI uses React inline
+# style props. Never add it to script-src: that would defeat the whole header.
+[[headers]]
+    for = "/*"
+
+    [headers.values]
+        Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://*.onrender.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+        X-Content-Type-Options = "nosniff"
+        X-Frame-Options = "DENY"
+        Referrer-Policy = "no-referrer"
+        Strict-Transport-Security = "max-age=31536000; includeSubDomains"

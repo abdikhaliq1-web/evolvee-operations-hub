@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api } from '../api.js';
+import { api, canWrite } from '../api.js';
 import { useTableView, SortHeader, SearchBox, onEnter } from '../ui.jsx';
 
 const EMPTY_FORM = { sku: '', name: '', manufacturer_id: '', threshold: '', unit_cost: '' };
@@ -19,6 +19,7 @@ export default function Products() {
     const [bulkMfr, setBulkMfr] = useState('');
     const [bulkThreshold, setBulkThreshold] = useState('');
     const { query, setQuery, view, sort, toggleSort } = useTableView(products, ['sku', 'name', 'manufacturer_name']);
+    const writable = canWrite('manufacturers');
 
     function load() {
         return Promise.all([api('/products'), api('/manufacturers')])
@@ -193,6 +194,7 @@ export default function Products() {
     function renderRow(product) {
         return (
             <tr key={product.id}>
+                {writable && (
                 <td>
                     <input
                         type="checkbox"
@@ -201,12 +203,14 @@ export default function Products() {
                         aria-label={`Select ${product.sku}`}
                     />
                 </td>
+                )}
                 <td>{product.sku}</td>
                 <td><Link to={`/products/${product.id}`}>{product.name}</Link></td>
                 <td>
                     <select
                         value={product.manufacturer_id || ''}
                         onChange={(e) => assignManufacturer(product, e.target.value)}
+                        disabled={!writable}
                         style={{ maxWidth: 220 }}
                     >
                         <option value="">— unassigned —</option>
@@ -221,6 +225,7 @@ export default function Products() {
                         // Show the pending edit if there is one, else the saved value.
                         value={edits[product.id] ?? product.threshold ?? ''}
                         onChange={(e) => updateEdit(product.id, e.target.value)}
+                        disabled={!writable}
                     />
                 </td>
                 <td className="num">
@@ -231,11 +236,14 @@ export default function Products() {
                         style={{ maxWidth: 90, textAlign: 'right' }}
                         value={costEdits[product.id] ?? product.unit_cost ?? ''}
                         onChange={(e) => updateCostEdit(product.id, e.target.value)}
+                        disabled={!writable}
                     />
                 </td>
+                {writable && (
                 <td>
                     <button className="link" onClick={() => saveRow(product)} disabled={busy}>Save</button>
                 </td>
+                )}
             </tr>
         );
     }
@@ -249,6 +257,7 @@ export default function Products() {
 
             {error && <div className="banner error">{error}</div>}
 
+            {writable && (
             <div className="tile" style={{ marginBottom: 18 }}>
                 <h2>Add product</h2>
                 <div className="row">
@@ -295,6 +304,7 @@ export default function Products() {
                     </button>
                 </div>
             </div>
+            )}
 
             {!products ? (
                 <p className="empty">Loading…</p>
@@ -306,11 +316,13 @@ export default function Products() {
                             setQuery={setQuery}
                             placeholder="Search SKU, product, manufacturer…"
                         />
-                        <button className="link" onClick={syncShopify} disabled={busy}>Sync from Shopify</button>
+                        {writable && (
+                            <button className="link" onClick={syncShopify} disabled={busy}>Sync from Shopify</button>
+                        )}
                         {syncMsg && <span style={{ color: 'var(--muted)', fontSize: 13 }}>{syncMsg}</span>}
                     </div>
 
-                    {selected.size > 0 && (
+                    {writable && selected.size > 0 && (
                         <div className="toolbar bulk-bar">
                             <strong>{selected.size} selected</strong>
                             <select value={bulkMfr} onChange={(e) => setBulkMfr(e.target.value)} style={{ maxWidth: 200 }}>
@@ -337,6 +349,7 @@ export default function Products() {
                     <table>
                         <thead>
                             <tr>
+                                {writable && (
                                 <th style={{ width: 28 }}>
                                     <input
                                         type="checkbox"
@@ -345,17 +358,18 @@ export default function Products() {
                                         aria-label="Select all visible"
                                     />
                                 </th>
+                                )}
                                 <SortHeader label="SKU / Item ID" sortKey="sku" sort={sort} toggleSort={toggleSort} />
                                 <SortHeader label="Product" sortKey="name" sort={sort} toggleSort={toggleSort} />
                                 <SortHeader label="Manufacturer" sortKey="manufacturer_name" sort={sort} toggleSort={toggleSort} />
                                 <SortHeader label="Reorder threshold" sortKey="threshold" sort={sort} toggleSort={toggleSort} className="num" />
                                 <SortHeader label="Unit cost ($)" sortKey="unit_cost" sort={sort} toggleSort={toggleSort} className="num" />
-                                <th />
+                                {writable && <th />}
                             </tr>
                         </thead>
                         <tbody>
                             {view.length === 0 ? (
-                                <tr><td colSpan={7} className="empty">No products match “{query}”.</td></tr>
+                                <tr><td colSpan={writable ? 7 : 5} className="empty">No products match “{query}”.</td></tr>
                             ) : view.map(renderRow)}
                         </tbody>
                     </table>
