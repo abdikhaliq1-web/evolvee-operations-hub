@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { useParams, useSearchParams, Link } from 'react-router-dom';
+import { useParams, useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { api, canWrite } from '../api.js';
 import { statusPillClass, formatStatus } from '../status.js';
 import { onEnter } from '../ui.jsx';
@@ -9,6 +9,7 @@ const CHANNELS = ['email', 'phone', 'meeting', 'other'];
 export default function ManufacturerDetail() {
     const { id } = useParams();
     const [params] = useSearchParams();
+    const navigate = useNavigate();
     const prefilled = useRef(false);
     const [data, setData] = useState(null);
     const [error, setError] = useState('');
@@ -105,6 +106,20 @@ export default function ManufacturerDetail() {
         });
     }
 
+    async function deleteManufacturer() {
+        if (!window.confirm(`Delete ${data.manufacturer.name}? This cannot be undone.`)) return;
+        if (busy) return;
+        setError('');
+        setBusy(true);
+        try {
+            await api(`/manufacturers/${id}`, { method: 'DELETE' });
+            navigate('/manufacturers');
+        } catch (e) {
+            setError(e.message);
+            setBusy(false);
+        }
+    }
+
     async function saveMetrics() {
         if (busy || !writable) return;
         setError('');
@@ -171,7 +186,18 @@ export default function ManufacturerDetail() {
                 <Link to="/manufacturers">← All manufacturers</Link>
             </p>
 
-            <h1>{m.name}</h1>
+            <h1 style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                {m.name}
+                {writable && (
+                    <button
+                        onClick={deleteManufacturer}
+                        disabled={busy}
+                        style={{ marginLeft: 'auto', color: 'var(--danger, #c00)', fontSize: 13 }}
+                    >
+                        Delete manufacturer
+                    </button>
+                )}
+            </h1>
 
             <p className="sub">
                 {m.country || ''}

@@ -172,6 +172,26 @@ router.patch('/:id', asyncRoute(async (req, res) => {
     res.json({ manufacturer: result.rows[0] });
 }));
 
+router.delete('/:id', asyncRoute(async (req, res) => {
+    const id = Number(req.params.id);
+    const result = await query(
+        'DELETE FROM manufacturers WHERE id = $1 RETURNING id, name',
+        [id]
+    );
+    const deleted = result.rows[0];
+
+    if (!deleted) {
+        return res.status(404).json({ error: 'Manufacturer not found.' });
+    }
+
+    await recordAudit(req, {
+        action: 'delete', entity: 'manufacturer', entityId: id,
+        details: { name: deleted.name },
+    });
+
+    res.json({ deleted: id });
+}));
+
 router.post('/:id/contacts', asyncRoute(async (req, res) => {
     const body = req.body || {};
     const name = body.name;
