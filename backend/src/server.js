@@ -60,6 +60,7 @@ app.use('/api/alerts', require('./routes/alerts'));
 app.use('/api/production-runs', require('./routes/productionRuns'));
 app.use('/api/sync', require('./routes/sync'));
 app.use('/api/audit', require('./routes/audit'));
+app.use('/api/expense-Summary', require('./routes/ExpenseSummary'))
 
 app.use(function (req, res) {
     res.status(404).json({ error: 'No route: ' + req.method + ' ' + req.originalUrl });
