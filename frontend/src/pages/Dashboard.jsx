@@ -31,7 +31,7 @@ function formatCount(value) {
 }
 
 // Builds the top KPI strip from whichever modules the user has access to.
-function ExecKpiCards({ inventory, sales, revenue, shipping, alerts }) {
+function ExecKpiCards({ inventory, sales, revenue, shipping, alerts, expenseSummary }) {
     const cards = [];
 
     if (revenue.data) {
@@ -104,6 +104,20 @@ function ExecKpiCards({ inventory, sales, revenue, shipping, alerts }) {
             label: 'Open reorder alerts',
             value: formatCount(alerts.data.open_count),
             bad: alerts.data.open_count > 0,
+        });
+    }
+
+    const summary = expenseSummary?.data?.summary ?? expenseSummary?.data ?? {};
+    if (summary && (summary.netProfit != null || summary.profitMargin != null)) {
+        cards.push({
+            key: 'company-profit',
+            label: 'Company profit',
+            value: formatGBP(summary.netProfit ?? 0),
+        });
+        cards.push({
+            key: 'company-profit-margin',
+            label: 'Profit margin',
+            value: `${Number(summary.profitMargin ?? 0).toFixed(2)}%`,
         });
     }
 
@@ -338,6 +352,7 @@ export default function Dashboard() {
     const alerts = useModule('/dashboard/alerts-summary', canAccess('alerts'));
     const partners = useModule('/dashboard/partners', canAccess('partners'));
     const sync = useModule('/sync/status', canAccess('sync'));
+    const expenseSummary = useModule('/expense-Summary/summary', canAccess('revenue'), 30000);
 
     // Sources that failed their most recent sync
     const failedSources = (sync.data?.sources || []).filter((source) => source.ok === false);
@@ -497,7 +512,7 @@ export default function Dashboard() {
                                         { label: 'Product', key: 'title' },
                                         { label: 'Units (30d)', key: 'units_sold_30d', num: true },
                                         { label: 'Revenue (30d)', key: 'revenue_30d', num: true, render: (p) => formatGBP(p.revenue_30d) },
-                                        { label: 'Margin %', key: 'margin_pct', num: true, render: (p) => (p.margin_pct != null ? `${p.margin_pct}%` : '—') },
+                                        { label: 'Margin %', key: 'profit_margin', num: true, render: (p) => (p.profit_margin != null ? `${p.profit_margin}%` : '—') },
                                         { label: 'Turnover', key: 'turnover', num: true, render: (p) => (p.turnover != null ? p.turnover : '—') },
                                         { label: 'Sell-through %', key: 'sell_through', num: true, render: (p) => (p.sell_through != null ? `${p.sell_through}%` : '—') },
                                     ]}
@@ -772,6 +787,7 @@ export default function Dashboard() {
                 revenue={revenue}
                 shipping={shipping}
                 alerts={alerts}
+                expenseSummary={expenseSummary}
             />
 
             <div className="toolbar dash-tools">

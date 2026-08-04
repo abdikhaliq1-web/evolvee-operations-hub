@@ -6,6 +6,7 @@ const shopify = require('../services/integrations/shopify');
 const zohoCrm = require('../services/integrations/zohoCrm');
 const partnerDashboard = require('../services/integrations/partnerDashboard');
 const { computeProductMetrics } = require('../services/productMetrics');
+const zohoBooks = require('../services/integrations/zohoBooks');
 
 const router = express.Router();
 
@@ -77,10 +78,11 @@ router.get('/sales', requirePermission('sales'), asyncRoute(async (req, res) => 
 }));
 
 router.get('/product-performance', requirePermission('revenue'), asyncRoute(async (req, res) => {
-    const [sales, stock, costResult] = await Promise.all([
+    const [sales, stock, costResult, zohoProducts] = await Promise.all([
         shopify.getSalesOverview(),
         shopify.getStockLevels(),
-        query('SELECT sku, unit_cost FROM products WHERE unit_cost IS NOT NULL')
+        query('SELECT sku, unit_cost FROM products WHERE unit_cost IS NOT NULL'),
+        zohoBooks.getProducts()
     ]);
 
     // Build lookup maps so we can merge cost and stock data with sales per SKU.
@@ -94,9 +96,16 @@ router.get('/product-performance', requirePermission('revenue'), asyncRoute(asyn
         stockBySku[s.sku] = s;
     }
 
+    const marginBySku = {};
+    for (const product of zohoProducts) {
+        marginBySku[product.sku] = product.profitMargin;
+    }
+
     const rows = [];
     for (const p of sales) {
-        rows.push(computeProductMetrics(p, stockBySku[p.sku], costBySku[p.sku]));
+        const row = computeProductMetrics(p, stockBySku[p.sku], costBySku[p.sku]);
+        row.profit_margin = marginBySku[p.sku] ?? null;
+        rows.push(row);
     }
 
     rows.sort(function (a, b) {
