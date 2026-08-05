@@ -52,6 +52,8 @@ Prefer to do it by hand, or something failed then follow the numbered steps belo
 10. [Browser support](_docs/browser-support.md)
 11. [Security controls](_docs/maintenance/security.md) — every control and its setting
 12. [Architecture & maintenance reference](_docs/maintenance/architecture.md) — for developers changing the code
+13. [Deployment](_docs/going-live/deployment.md)
+14. [Switching Deployed Site to Live](_docs/going-live/going-live.md)
 
 ---
 
