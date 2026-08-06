@@ -8,15 +8,15 @@ const router = express.Router();
 router.use(authenticate);
 // creating a route to get the summary of the companies financials.
 router.get('/summary', requirePermission('revenue'), asyncRoute(async (req, res) => {
-    const summary = await zohoBooks.getSummary();
-    res.json({ summary });
+    const data = await zohoBooks.getExpenseProfitSummary();
+    res.json({ summary: data.summary });
 }));
+
 // creating a route to get the details of each product including their profit and profit margin.
 router.get('/products', requirePermission('revenue'), asyncRoute(async (req, res) => {
-    const products = await zohoBooks.getProducts();
-    res.json({ products });
-}
-));
+    const data = await zohoBooks.getExpenseProfitSummary();
+    res.json({ products: data.products });
+}));
 
 module.exports = router;
 

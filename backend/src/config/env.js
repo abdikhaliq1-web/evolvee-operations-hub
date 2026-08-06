@@ -23,7 +23,7 @@ function hostIsLocal(connectionString) {
 }
 
 // Require a strong JWT secret whenever this isn't a purely local/dev setup.
-const anyLiveMode = ['SHOPIFY_MODE', 'ZOHO_CRM_MODE', 'PARTNER_DASHBOARD_MODE'].some((key) => (process.env[key] || '').toLowerCase() === 'live');
+const anyLiveMode = ['SHOPIFY_MODE', 'ZOHO_CRM_MODE', 'PARTNER_DASHBOARD_MODE', 'ZOHO_BOOKS_MODE'].some((key) => (process.env[key] || '').toLowerCase() === 'live');
 const remoteDatabase = !hostIsLocal(process.env.DATABASE_URL || '');
 const enforceStrongSecret = isProduction || anyLiveMode || remoteDatabase;
 
@@ -89,7 +89,8 @@ const env = {
     modes: {
         shopify: envOr('SHOPIFY_MODE', 'off'),
         zohoCrm: envOr('ZOHO_CRM_MODE', 'off'),
-        partnerDashboard: envOr('PARTNER_DASHBOARD_MODE', 'off')
+        partnerDashboard: envOr('PARTNER_DASHBOARD_MODE', 'off'),
+        zohoBooks: envOr('ZOHO_BOOKS_MODE', 'off')
     },
 
     partnerDashboard: {
@@ -107,6 +108,7 @@ const env = {
         clientId: envOr('ZOHO_CLIENT_ID', ''),
         clientSecret: envOr('ZOHO_CLIENT_SECRET', ''),
         refreshToken: envOr('ZOHO_REFRESH_TOKEN', ''),
+        organizationId: envOr('ORGANIZATION_ID', envOr('ZOHO_ORGANIZATION_ID', '')),
         accountsBase: envOr('ZOHO_ACCOUNTS_BASE', 'https://accounts.zoho.com'),
         apiBase: envOr('ZOHO_API_BASE', 'https://www.zohoapis.com')
     }
