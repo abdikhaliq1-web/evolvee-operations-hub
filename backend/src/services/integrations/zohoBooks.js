@@ -41,7 +41,7 @@ async function getExpenseProfitSummary() {
                 fetchItems(token)
             ]);
         } catch (err) {
-            if (err.status === 404) {
+            if (err.status === 401) {
                 clearZohoToken();
 
                 try {
