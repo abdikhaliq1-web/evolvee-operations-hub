@@ -4,13 +4,17 @@ Internal operations dashboard plus a manufacturer/reorder management tool.
 
 Stack: React (Vite), Node.js/Express, PostgreSQL, JWT auth, node-cron.
 
-This README assumes no prior installations. All commands are PowerShell.
+This README assumes no prior installations. The existing setup automation uses
+Windows PowerShell; macOS and Linux developers can use the shell launcher after
+completing the prerequisites and manual service setup.
 
 The detailed steps live in [`_docs/setup-help/`](_docs/setup-help/) and are linked below.
 
 ---
 
 ## Quick start
+
+### Windows
 
 If you just want it running, three `.bat` files in the repo root do the work. They assume
 Node and PostgreSQL are installed and the `opshub` database/role exist, so do
@@ -30,6 +34,36 @@ still works, with the partner tile on bundled sample data.
 So a fresh demo install is: prerequisites, database, `setup-demo.bat`, `run-server.bat`,
 then open http://localhost:5173 (or what is shown on the frontend PS window). Both setup scripts copy `backend\.env.example` to `.env`
 if it's missing; review it before relying on a live deploy.
+
+### macOS and Linux startup
+
+The `.bat` setup scripts are Windows-only. After manually completing the
+prerequisites and setting up the backend, frontend, and optional QR Partner
+Program, run the following command from the repository root:
+
+```bash
+./run-server.sh
+```
+
+The launcher starts the backend with `npm start`, the frontend with
+`npm run dev`, and the QR Partner Program when
+`evolvee-partners/venv/bin/python` is available and executable. If the Partner
+virtual environment is absent, the launcher prints a message and continues
+starting the Operations Hub.
+
+Startup messages identify each service. Subsequent service output shares the
+same terminal and may interleave. If one service exits during startup, its
+error remains visible while the other services continue until `Ctrl+C`. Press
+`Ctrl+C` once to stop the processes started by the launcher.
+
+The launcher itself does not install dependencies, create or reset databases,
+run migrations, seed data, modify environment files, or embed credentials.
+Each application still performs its normal startup behavior. The existing
+individual startup commands remain available when separate terminals are
+preferred.
+
+The launcher has been tested on macOS. It is designed for Bash compatibility
+on Linux, but Linux behavior has not yet been verified.
 
 Prefer to do it by hand, or something failed then follow the numbered steps below.
 

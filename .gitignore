@@ -5,3 +5,7 @@ _docs/deployment/
 .ev
 *.log
 .DS_Store
+venv/
+
+# For WebStorm IDE
+.idea/
