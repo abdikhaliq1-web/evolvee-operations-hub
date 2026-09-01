@@ -25,6 +25,20 @@ export function selectRows(rows, searchFields, query, sort) {
     return view;
 }
 
+// Pure helper function to toggle between ascending, descending, and default view
+export function nextSort(prev, key) {
+    // Checks if a different key was clicked; returns new key ascending view
+    if (prev.key !== key) {
+        return {key, dir: 1};
+    }
+    // Key should be the same, then checks if its order is ascending; returns descending view
+    if (prev.dir === 1) {
+        return {key, dir: -1};
+    }
+    // Key should be the same and descending; returns default view
+    return {key: null, dir: 1};
+}
+
 export function toCsv(columns, rows) {
     const cell = (value) => {
         let s = value == null ? '' : String(value);

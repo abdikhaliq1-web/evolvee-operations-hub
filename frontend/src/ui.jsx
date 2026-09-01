@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { selectRows, toCsv } from './tableView.js';
+import { selectRows, nextSort, toCsv } from './tableView.js';
 
 // Combines search + sort state with the derived, filtered rows.
 export function useTableView(rows, searchFields) {
@@ -9,7 +9,7 @@ export function useTableView(rows, searchFields) {
     const view = selectRows(rows, searchFields, query, sort);
 
     function toggleSort(key) {
-        setSort((prev) => (prev.key === key ? { key, dir: -prev.dir } : { key, dir: 1 }));
+        setSort((prev) => nextSort(prev, key));
     }
 
     return { query, setQuery, view, sort, toggleSort };
