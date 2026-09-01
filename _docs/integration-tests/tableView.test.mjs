@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { compareValues, selectRows, toCsv } from '../../frontend/src/tableView.js';
+import { compareValues, nextSort, selectRows, toCsv } from '../../frontend/src/tableView.js';
 
 assert.ok(compareValues(2, 10) < 0, 'numbers compare numerically');
 assert.ok(compareValues('ER-2', 'ER-10') < 0, 'numeric strings sort naturally');
@@ -10,6 +10,18 @@ const rows = [
     { sku: 'A-10', name: 'Alpha', stock: 2 },
     { sku: 'C-1', name: 'Gamma', stock: null },
 ];
+
+assert.deepEqual(nextSort({key: null, dir: 1}, 'stock'), {key: 'stock', dir: 1}, 'first click sorts ascending',);
+assert.deepEqual(nextSort({key: 'stock', dir: 1}, 'stock'), {key: 'stock', dir: -1}, 'second click sorts descending',);
+assert.deepEqual(nextSort({key: 'stock', dir: -1}, 'stock'), {key: null, dir: 1}, 'third click clears sorting',);
+assert.deepEqual(nextSort({key: 'stock', dir: 1}, 'sku'), {key: 'sku', dir: 1}, 'after 1st click, different column begins ascending',);
+assert.deepEqual(nextSort({key: 'stock', dir: -1}, 'sku'), {key: 'sku', dir: 1}, 'after 2nd click, different column begins ascending',);
+
+const previousSort = { key: 'stock', dir: 1 };
+const updatedSort = nextSort(previousSort, 'stock');
+
+assert.deepEqual(previousSort, { key: 'stock', dir: 1 }, 'previous state remains unchanged',);
+assert.notStrictEqual(updatedSort, previousSort, 'helper returns a new state object',);
 
 assert.deepEqual(selectRows(rows, ['name'], 'alp', null).map((r) => r.sku), ['A-10']);
 assert.equal(selectRows(rows, ['name', 'sku'], 'xyz', null).length, 0, 'no match -> empty');
