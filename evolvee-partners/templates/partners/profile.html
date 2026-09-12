@@ -21,7 +21,19 @@
         <p><strong>{{ partner.social_handle }}</strong></p>
         {% if partner.is_active %}
         <p class="muted">Creator ID: {{ partner.partner_code }}</p>
-        <p class="muted">Discount code: {{ partner.discount_code }}</p>
+        <p class="muted">Personal code: {{ partner.discount_code }}</p>
+        {% with promos=partner.get_active_promo_codes %}
+        {% if promos %}
+        <div class="profile-promos">
+            <p class="muted">Active promos:</p>
+            <ul class="promo-code-list compact">
+                {% for promo in promos %}
+                <li><strong>{{ promo.code }}</strong> — {{ promo.title }}{% if promo.expires_at %} (until {{ promo.expires_at|date:"M j, Y" }}){% endif %}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+        {% endwith %}
         {% endif %}
         <p class="muted">{{ partner.location_label }}</p>
         <span class="status-badge status-{{ partner.status }}">{{ partner.get_status_display }}</span>

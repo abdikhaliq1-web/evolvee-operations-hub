@@ -1,12 +1,8 @@
-import hmac
-
-from django.conf import settings
 from django.db.models.functions import TruncDate
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from partners.analytics.queries import get_partner_leaderboard, get_program_kpis
 from partners.models import MarketingAsset, Partner, PartnerPayment, PartnerSale, ProgramActivity
 from partners.serializers import (
     MarketingAssetSerializer,
@@ -143,27 +139,3 @@ class MarketingAssetListView(PartnerActivityLogMixin, generics.ListAPIView):
 
     def get_queryset(self):
         return MarketingAsset.objects.filter(is_active=True)
-
-
-class HasOpsHubKey(permissions.BasePermission):
-    message = "Invalid or missing X-Ops-Hub-Key header."
-
-    def has_permission(self, request, view):
-        expected = settings.OPS_HUB_API_KEY
-        if not expected:
-            return False
-        provided = request.headers.get("X-Ops-Hub-Key", "")
-        return hmac.compare_digest(provided.encode(), expected.encode())
-
-
-class OpsHubSummaryView(APIView):
-    authentication_classes = []
-    permission_classes = [HasOpsHubKey]
-
-    def get(self, request):
-        return Response(
-            {
-                "kpis": get_program_kpis(),
-                "leaderboard": get_partner_leaderboard(limit=10),
-            }
-        )

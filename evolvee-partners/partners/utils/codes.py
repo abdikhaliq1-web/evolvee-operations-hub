@@ -4,12 +4,16 @@ import string
 
 from django.utils import timezone
 
-from partners.models import Partner
+from partners.models import Partner, PromoCode
 
 CODE_PREFIX = "ER-"
 PARTNER_CODE_SUFFIX_LENGTH = 6
-DISCOUNT_SUFFIX_MIN = 5
-DISCOUNT_SUFFIX_MAX = 7
+DISCOUNT_CODE_MAX_LENGTH = 16
+DISCOUNT_SUFFIX_MAX = DISCOUNT_CODE_MAX_LENGTH - len(CODE_PREFIX)
+
+
+def normalize_code(code: str) -> str:
+    return (code or "").strip().upper().replace(" ", "")
 
 
 def _name_letters(partner_name: str) -> str:
@@ -19,15 +23,25 @@ def _name_letters(partner_name: str) -> str:
     return letters
 
 
-def _year_suffix() -> str:
-    return str(timezone.now().year % 100).zfill(2)
+def _name_parts(partner_name: str) -> list[str]:
+    return [part for part in re.sub(r"[^A-Za-z\s]", " ", partner_name or "").upper().split() if part]
 
 
-def _discount_code_exists(code: str, exclude_pk=None) -> bool:
-    qs = Partner.objects.filter(discount_code__iexact=code)
-    if exclude_pk:
-        qs = qs.exclude(pk=exclude_pk)
-    return qs.exists()
+def code_is_taken(code: str, *, exclude_partner_pk=None, exclude_promo_pk=None) -> bool:
+    normalized = normalize_code(code)
+    if not normalized:
+        return False
+
+    partner_qs = Partner.objects.filter(discount_code__iexact=normalized)
+    if exclude_partner_pk:
+        partner_qs = partner_qs.exclude(pk=exclude_partner_pk)
+    if partner_qs.exists():
+        return True
+
+    promo_qs = PromoCode.objects.filter(code__iexact=normalized)
+    if exclude_promo_pk:
+        promo_qs = promo_qs.exclude(pk=exclude_promo_pk)
+    return promo_qs.exists()
 
 
 def _partner_code_exists(code: str, exclude_pk=None) -> bool:
@@ -50,52 +64,52 @@ def generate_partner_code(exclude_pk=None) -> str:
 
 def generate_discount_code(partner_name: str, exclude_pk=None) -> str:
     """
-    Creator-facing discount code: ER- + 5–7 chars from name + year.
-    Example: Junjunpanda -> ER-JUN26
+    Permanent creator discount code from their name, e.g. Jun Jun -> ER-JUNJUN.
+    Does not expire.
     """
     letters = _name_letters(partner_name)
-    year = _year_suffix()
-
+    parts = _name_parts(partner_name)
     candidates: list[str] = []
 
-    for name_len in range(3, min(len(letters), DISCOUNT_SUFFIX_MAX - len(year)) + 1):
-        suffix = (letters[:name_len] + year)[:DISCOUNT_SUFFIX_MAX]
-        if DISCOUNT_SUFFIX_MIN <= len(suffix) <= DISCOUNT_SUFFIX_MAX:
-            candidates.append(suffix)
+    if parts:
+        first = parts[0]
+        if len(first) >= 3:
+            candidates.append(first[:DISCOUNT_SUFFIX_MAX])
 
-    for name_len in range(3, len(letters) + 1):
-        suffix = (letters[:name_len] + year)[:DISCOUNT_SUFFIX_MAX]
-        if len(suffix) >= DISCOUNT_SUFFIX_MIN:
-            candidates.append(suffix)
+        if len(parts) >= 2:
+            combined = f"{parts[0]}{parts[-1]}"
+            if len(combined) >= 3:
+                candidates.append(combined[:DISCOUNT_SUFFIX_MAX])
 
-    for extra_index in range(1, len(letters)):
-        for name_len in range(3, min(len(letters), DISCOUNT_SUFFIX_MAX - len(year)) + 1):
-            suffix = (letters[:name_len] + letters[extra_index] + year)[:DISCOUNT_SUFFIX_MAX]
-            if DISCOUNT_SUFFIX_MIN <= len(suffix) <= DISCOUNT_SUFFIX_MAX:
-                candidates.append(suffix)
+        full_name = "".join(parts)
+        if len(full_name) >= 3:
+            candidates.append(full_name[:DISCOUNT_SUFFIX_MAX])
 
-    seen = set()
-    for suffix in sorted(candidates, key=len):
-        if suffix in seen:
+    for length in range(min(len(letters), DISCOUNT_SUFFIX_MAX), 2, -1):
+        candidates.append(letters[:length])
+
+    seen: set[str] = set()
+    for base in candidates:
+        base = base[:DISCOUNT_SUFFIX_MAX]
+        if len(base) < 3 or base in seen:
             continue
-        seen.add(suffix)
-        code = f"{CODE_PREFIX}{suffix}"
-        if not _discount_code_exists(code, exclude_pk=exclude_pk):
+        seen.add(base)
+        code = f"{CODE_PREFIX}{base}"
+        if not code_is_taken(code, exclude_partner_pk=exclude_pk):
             return code
 
-    for attempt in range(1, 100):
-        suffix = (letters[:3] + letters[attempt % len(letters)] + year)[:DISCOUNT_SUFFIX_MAX]
-        if len(suffix) < DISCOUNT_SUFFIX_MIN:
-            suffix = (letters + year)[:DISCOUNT_SUFFIX_MIN].ljust(DISCOUNT_SUFFIX_MIN, "X")
+    base = (parts[0] if parts else letters)[: max(3, DISCOUNT_SUFFIX_MAX - 2)]
+    for suffix_number in range(2, 100):
+        suffix = f"{base}{suffix_number}"[:DISCOUNT_SUFFIX_MAX]
         code = f"{CODE_PREFIX}{suffix}"
-        if not _discount_code_exists(code, exclude_pk=exclude_pk):
+        if not code_is_taken(code, exclude_partner_pk=exclude_pk):
             return code
 
     raise ValueError("Unable to generate a unique discount code.")
 
 
 def assign_creator_codes(partner: Partner) -> bool:
-    """Assign admin ID + discount code when a partner is approved. Returns True if updated."""
+    """Assign admin ID + personal discount code when a partner is approved."""
     from partners.models import PartnerStatus
 
     if partner.status != PartnerStatus.APPROVED:
@@ -109,3 +123,37 @@ def assign_creator_codes(partner: Partner) -> bool:
         partner.discount_code = generate_discount_code(partner.partner_name, exclude_pk=partner.pk)
         updated = True
     return updated
+
+
+def lookup_partner_by_discount_code(code: str):
+    """Match a checkout code to an approved partner (personal or assigned promo)."""
+    from django.db.models import Q
+
+    from partners.models import Partner, PartnerStatus
+
+    normalized = normalize_code(code)
+    if not normalized:
+        return None
+
+    partner = Partner.objects.filter(
+        status=PartnerStatus.APPROVED,
+        discount_code__iexact=normalized,
+    ).first()
+    if partner:
+        return partner
+
+    now = timezone.now()
+    promo = (
+        PromoCode.objects.filter(is_active=True, code__iexact=normalized)
+        .filter(Q(expires_at__isnull=True) | Q(expires_at__gt=now))
+        .first()
+    )
+    if not promo:
+        return None
+
+    assigned = list(
+        promo.assignments.filter(partner__status=PartnerStatus.APPROVED).select_related("partner")
+    )
+    if len(assigned) == 1:
+        return assigned[0].partner
+    return None

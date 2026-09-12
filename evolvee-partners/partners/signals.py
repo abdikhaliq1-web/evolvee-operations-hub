@@ -2,11 +2,11 @@ from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.utils import timezone
 
-from partners.models import Partner, PartnerPayment, PartnerStatus, PartnerSale, ProgramActivity
+from partners.models import Partner, PartnerPayment, PartnerPromoAssignment, PartnerSale, PartnerStatus, ProgramActivity
 from partners.utils.activity import log_activity
 from partners.utils.codes import assign_creator_codes
 from partners.utils.commission import refresh_partner_totals
-from partners.utils.notifications import notify_partner_status_change
+from partners.utils.notifications import notify_partner_promo_assigned, notify_partner_status_change
 from partners.utils.qr_generator import ensure_partner_qr
 
 
@@ -79,6 +79,12 @@ def send_partner_status_notifications(sender, instance, created, **kwargs):
 
     admin_message = getattr(instance, "_admin_status_message", "")
     notify_partner_status_change(instance, instance.status, admin_message)
+
+
+@receiver(post_save, sender=PartnerPromoAssignment)
+def notify_creator_promo_assignment(sender, instance, created, **kwargs):
+    if created and instance.partner.is_active:
+        notify_partner_promo_assigned(instance.partner, instance.promo)
 
 
 @receiver(post_save, sender=PartnerSale)

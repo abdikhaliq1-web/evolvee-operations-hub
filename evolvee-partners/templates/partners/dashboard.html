@@ -12,7 +12,7 @@
         <div>
             <h1>Welcome, {{ partner.partner_name }}</h1>
             {% if is_approved %}
-            <p class="muted">Creator ID: <strong>{{ partner.partner_code }}</strong> · Discount code: <strong>{{ partner.discount_code }}</strong> · {{ partner.commission_percentage }}% commission</p>
+            <p class="muted">Creator ID: <strong>{{ partner.partner_code }}</strong> · Personal code: <strong>{{ partner.discount_code }}</strong> · {{ partner.commission_percentage }}% commission</p>
             {% else %}
             <p class="muted">{{ partner.commission_percentage }}% commission once approved</p>
             {% endif %}
@@ -86,7 +86,7 @@
 
     <div class="card share-card">
         <h2 class="section-heading">Share & Earn</h2>
-        <p class="muted">Your creator ID is <strong>{{ partner.partner_code }}</strong> (for admin reference). Share your discount code <strong>{{ partner.discount_code }}</strong>, QR code, or referral link to earn commissions.</p>
+        <p class="muted">Your creator ID is <strong>{{ partner.partner_code }}</strong> (for admin reference). Share your personal discount code <strong>{{ partner.discount_code }}</strong>, any active promo codes below, your QR code, or referral link to earn commissions.</p>
         <div class="share-panel">
             <div class="share-qr">
                 {% if partner.qr_code_image %}
@@ -112,12 +112,32 @@
                     </div>
                 </div>
                 <div class="share-block">
-                    <label>Discount code</label>
+                    <label>Personal discount code <span class="code-tag code-tag--permanent">Permanent</span></label>
                     <div class="copy-row">
                         <input type="text" readonly value="{{ partner.discount_code }}" id="discount-code">
                         <button type="button" class="btn-copy" data-type="discount_code" data-target="discount-code">Copy</button>
                     </div>
+                    <p class="muted share-note">Unique to you, based on your name — this code does not expire.</p>
                 </div>
+                {% if active_promo_codes %}
+                <div class="share-block">
+                    <label>Active promo codes <span class="code-tag code-tag--promo">Limited time</span></label>
+                    <ul class="promo-code-list">
+                        {% for promo in active_promo_codes %}
+                        <li class="promo-code-item">
+                            <div class="copy-row">
+                                <input type="text" readonly value="{{ promo.code }}" id="promo-code-{{ promo.id }}">
+                                <button type="button" class="btn-copy" data-type="promo_code" data-target="promo-code-{{ promo.id }}">Copy</button>
+                            </div>
+                            <p class="muted share-note">
+                                {{ promo.title }}
+                                {% if promo.expires_at %} · Expires {{ promo.expires_at|date:"M j, Y" }}{% else %} · No expiry set{% endif %}
+                            </p>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
                 <div class="share-actions">
                     <button type="button" class="btn-ghost" id="share-referral-btn">Share referral link</button>
                 </div>

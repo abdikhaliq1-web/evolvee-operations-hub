@@ -2,7 +2,6 @@ from django.urls import path
 
 from partners.api.views import (
     MarketingAssetListView,
-    OpsHubSummaryView,
     PartnerApplicationView,
     PartnerPaymentsListView,
     PartnerProfileView,
@@ -31,5 +30,4 @@ urlpatterns = [
     path("locations/subdivisions/", location_subdivisions, name="location_subdivisions"),
     path("locations/cities/", location_cities, name="location_cities"),
     path("payment-fields/", payment_fields_schema, name="payment_fields"),
-    path("ops-hub/summary/", OpsHubSummaryView.as_view(), name="ops_hub_summary"),
 ]

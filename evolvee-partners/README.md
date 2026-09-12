@@ -69,7 +69,6 @@ Skip the prompt in CI or scripts with `py manage.py runserver --skip-startup-pro
 
 | URL | Description |
 |-----|-------------|
-| http://127.0.0.1:8000/apply/ | Partner application |
 | http://127.0.0.1:8000/login/ | Partner login |
 | http://127.0.0.1:8000/admin/login/ | **Staff / admin login** → Command Center |
 | http://127.0.0.1:8000/command-center/ | Admin dashboard (staff only) |
@@ -142,18 +141,6 @@ Optional offline geolocation: set `GEOLITE2_CITY_PATH` in `.env` to a [MaxMind G
 | GET | `/api/sales/` | Approved | Sales history |
 | GET | `/api/payments/` | Approved | Payout history |
 | GET | `/api/assets/` | Approved | Marketing assets |
-| GET | `/api/ops-hub/summary/` | `X-Ops-Hub-Key` header | Program KPIs + top 10 leaderboard for the Operations Hub |
-
-### Operations Hub integration
-
-The Operations Hub backend reads `/api/ops-hub/summary/` server-to-server to fill its
-**Partners & commissions** dashboard tile. Authentication is a shared secret, not a session:
-
-1. Set `OPS_HUB_API_KEY` in this app's `.env` to a long random string.
-2. In the hub's `backend/.env`, set `PARTNER_DASHBOARD_API_KEY` to the same value,
-   `PARTNER_DASHBOARD_BASE_URL` to this app's public URL, and `PARTNER_DASHBOARD_MODE=live`.
-
-A blank `OPS_HUB_API_KEY` disables the endpoint — every request gets a 403.
 
 ### Shopify webhooks
 
@@ -272,7 +259,6 @@ Key settings in `.env`:
 - `SHOPIFY_SHOP_DOMAIN` — your `*.myshopify.com` domain
 - `SHOPIFY_ACCESS_TOKEN` — Admin API token for registering webhooks
 - `SHOPIFY_WEBHOOK_BASE_URL` — public URL where Shopify sends webhooks
-- `OPS_HUB_API_KEY` — shared secret for the Operations Hub's `/api/ops-hub/summary/` calls
 
 ## Tech stack
 

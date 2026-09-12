@@ -12,7 +12,7 @@
         <p class="muted"><a href="{% url 'analytics:command_center' %}" class="link-btn">← Back to overview</a></p>
         <h1>{{ partner.partner_name }}</h1>
         <p class="muted">
-            {{ partner.partner_code|default:"Pending" }}{% if partner.discount_code %} · Discount {{ partner.discount_code }}{% endif %} · {{ partner.get_status_display }} · {{ partner.commission_percentage }}% commission
+            {{ partner.partner_code|default:"Pending" }}{% if partner.discount_code %} · Personal code {{ partner.discount_code }}{% endif %} · {{ partner.get_status_display }} · {{ partner.commission_percentage }}% commission
             {% if partner.location_label != "—" %} · Based in {{ partner.location_label }}{% endif %}
         </p>
     </div>
@@ -63,6 +63,18 @@
         {% if partner.bio %}
         <p>{{ partner.bio }}</p>
         {% endif %}
+        {% with promos=partner.get_active_promo_codes %}
+        {% if promos %}
+        <div style="margin-top:1rem;">
+            <strong>Active promo codes</strong>
+            <ul class="event-breakdown">
+                {% for promo in promos %}
+                <li><span>{{ promo.code }}</span><strong>{{ promo.title }}{% if promo.expires_at %} · until {{ promo.expires_at|date:"M j, Y" }}{% endif %}</strong></li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+        {% endwith %}
     </div>
 </div>
 

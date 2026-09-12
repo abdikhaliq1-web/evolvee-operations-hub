@@ -1,17 +1,9 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User
-from django.utils import timezone
 
-from partners.models import MarketingAsset, Partner, PartnerClick, PartnerStatus, SaleStatus
+from partners.models import MarketingAsset, Partner, PartnerStatus, SaleStatus
 from partners.utils.commission import record_partner_sale
 from decimal import Decimal
-
-DEMO_CLICK_LOCATIONS = [
-    ("Los Angeles", "California", "US", "North America", 9),
-    ("Manchester", "England", "GB", "Europe", 6),
-    ("Dubai", "Dubai", "AE", "Asia", 4),
-    ("Milan", "Lombardy", "IT", "Europe", 3),
-]
 
 
 class Command(BaseCommand):
@@ -37,10 +29,6 @@ class Command(BaseCommand):
                 "status": PartnerStatus.APPROVED,
                 "commission_percentage": Decimal("12.00"),
                 "social_handle": "@radiancebeauty",
-                "city": "Los Angeles",
-                "region": "California",
-                "country": "US",
-                "continent": "North America",
             },
         )
         if partner.status != PartnerStatus.APPROVED:
@@ -66,21 +54,6 @@ class Command(BaseCommand):
                 products_data=[{"name": "Radiance Serum", "qty": 1}],
                 status=SaleStatus.APPROVED,
             )
-
-        if not partner.clicks.exists():
-            now = timezone.now()
-            for city, region, country, continent, count in DEMO_CLICK_LOCATIONS:
-                for index in range(count):
-                    converted = index == 0
-                    PartnerClick.objects.create(
-                        partner=partner,
-                        city=city,
-                        region=region,
-                        country=country,
-                        continent=continent,
-                        converted=converted,
-                        converted_at=now if converted else None,
-                    )
 
         self.stdout.write(self.style.SUCCESS(
             f"Demo partner ready: {partner.partner_code} / password: demo12345"

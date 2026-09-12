@@ -56,9 +56,9 @@ def build_partners_workbook(queryset: QuerySet | None = None) -> BytesIO:
     partners = (
         partners.select_related("user")
         .annotate(
-            click_count=Count("clicks", distinct=True),
-            conversion_count=Count("clicks", filter=Q(clicks__converted=True), distinct=True),
-            sale_count=Count("sales", filter=Q(sales__status=SaleStatus.APPROVED), distinct=True),
+            click_count=Count("clicks"),
+            conversion_count=Count("clicks", filter=Q(clicks__converted=True)),
+            sale_count=Count("sales", filter=Q(sales__status=SaleStatus.APPROVED)),
         )
         .order_by("partner_name")
     )
