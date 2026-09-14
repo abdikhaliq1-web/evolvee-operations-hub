@@ -98,7 +98,7 @@ router.get('/product-performance', requirePermission('revenue'), asyncRoute(asyn
             stockByVariantId[String(s.variant_id)] = s;
         }
     }
-
+// Fetch data from shopify. Obtain the unit cost of each variant and use that to calculate the potential profit margin of each product. If any variant is missing cost or price, we cannot calculate the margin for that product.
     const rows = [];
     for (const p of sales) {
         const row = computeProductMetrics(p, stockBySku[p.sku], costBySku[p.sku]);

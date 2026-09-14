@@ -512,7 +512,7 @@ export default function Dashboard() {
                                         { label: 'Product', key: 'title' },
                                         { label: 'Units (30d)', key: 'units_sold_30d', num: true },
                                         { label: 'Revenue (30d)', key: 'revenue_30d', num: true, render: (p) => formatGBP(p.revenue_30d) },
-                                        { label: 'Margin %', key: 'profit_margin', num: true, render: (p) => (p.profit_margin != null ? `${p.profit_margin}%` : '—') },
+                                        { label: 'Potential Margin %', key: 'profit_margin', num: true, render: (p) => (p.profit_margin != null ? `${p.profit_margin}%` : '—') },
                                         { label: 'Turnover', key: 'turnover', num: true, render: (p) => (p.turnover != null ? p.turnover : '—') },
                                         { label: 'Sell-through %', key: 'sell_through', num: true, render: (p) => (p.sell_through != null ? `${p.sell_through}%` : '—') },
                                     ]}

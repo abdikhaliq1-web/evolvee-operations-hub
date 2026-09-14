@@ -21,7 +21,7 @@ async function fetchExpenses(token) {
 }
 
 
-
+// Get the summary of expenses and profit from Zoho Books and Shopify.
 async function getExpenseProfitSummary() {
     const mode = env.modes.zohoBooks;
 
@@ -49,9 +49,6 @@ async function getExpenseProfitSummary() {
                         getSalesOverview(),
                         fetchExpenses(token)
                     ]);
-                    console.log('Sales:', sales.length);
-                    console.log('Expenses:', expenses.length);
-                    console.log('Expenses data:', expenses);
                 } catch (retryErr) {
                     console.warn('Zoho Books retry failed, using Shopify sales-only fallback:', retryErr.message);
                     expenses = [];
@@ -64,7 +61,7 @@ async function getExpenseProfitSummary() {
             }
         }
 
-        // Calculate the company-level summary from the merged product rows and expenses.
+        // Calculate the company-level revenue.
          const totalRevenue = (sales || []).reduce(
             (sum, sale) => sum + Number(sale.revenue_30d || sale.revenue || 0),
             0
@@ -98,7 +95,6 @@ async function getExpenseProfitSummary() {
                 netProfit,
                 profitMargin
             },
-            products: []
         };
     });
 }
@@ -108,13 +104,8 @@ async function getSummary() {
     return data.summary;
 }
 
-async function getProducts() {
-    const data = await getExpenseProfitSummary();
-    return data.products;
-}
 
 module.exports = {
     getExpenseProfitSummary: () => cached('zoho_books:getExpenseProfitSummary', getExpenseProfitSummary),
-    getSummary,
-    getProducts
+    getSummary
 };

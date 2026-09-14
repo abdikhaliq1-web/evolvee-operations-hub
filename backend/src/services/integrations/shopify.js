@@ -68,7 +68,6 @@ async function getSalesOverview() {
             '&fields=line_items,total_price';
 
         const orders = await fetchAllPages(url, 'orders');
-        console.log(JSON.stringify(orders, null, 2));
 
         const bySku = {};
         for (const order of orders) {
@@ -242,7 +241,7 @@ async function getSalesTrend() {
         return out;
     }, {});
 }
-
+// Fetch the cost of an inventory item from Shopify. If the cost is null, return null. If the inventory item does not exist, return null. If the inventory item exists and has a cost, return the cost as a number.
 async function getInventoryItemCost(inventoryItemId) {
     const url =
         base() +
