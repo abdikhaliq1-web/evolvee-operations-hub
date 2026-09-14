@@ -68,6 +68,7 @@ async function getSalesOverview() {
             '&fields=line_items,total_price';
 
         const orders = await fetchAllPages(url, 'orders');
+        console.log(JSON.stringify(orders, null, 2));
 
         const bySku = {};
         for (const order of orders) {
@@ -81,12 +82,18 @@ async function getSalesOverview() {
                         sku: sku,
                         title: li.title,
                         units_sold_30d: 0,
-                        revenue_30d: 0
+                        revenue_30d: 0,
+                        variants: []
                     };
                 }
 
                 bySku[sku].units_sold_30d += li.quantity;
                 bySku[sku].revenue_30d += Number(li.price) * li.quantity;
+                bySku[sku].variants.push({
+                variant_id: li.variant_id ? String(li.variant_id) : null,
+                variant_title: li.variant_title,
+                quantity: li.quantity
+                });
             }
         }
 
@@ -236,6 +243,26 @@ async function getSalesTrend() {
     }, {});
 }
 
+async function getInventoryItemCost(inventoryItemId) {
+    const url =
+        base() +
+        '/inventory_items/' +
+        inventoryItemId +
+        '.json';
+
+    const data = await callExternal(url, {
+        headers: headers()
+    });
+
+    if (!data.inventory_item) {
+        return null;
+    }
+
+    return data.inventory_item.cost !== null
+        ? Number(data.inventory_item.cost)
+        : null;
+}
+
 async function getStockLevels() {
     const mode = env.modes.shopify;
 
@@ -267,7 +294,10 @@ async function getStockLevels() {
 
                 bySku[sku] = {
                     sku: sku,
+                    variant_id: v.id ? String(v.id) : null,
                     inventory_item_id: v.inventory_item_id ? String(v.inventory_item_id) : null,
+                    product_name: p.title,
+                    variant_name: v.title,
                     name: variantName,
                     price: Number(v.price || 0),
                     image: image,
@@ -278,6 +308,14 @@ async function getStockLevels() {
                 if (v.inventory_item_id) {
                     itemToSku[v.inventory_item_id] = sku;
                 }
+            }
+        }
+
+        for (const item of Object.values(bySku)) {
+            if (item.inventory_item_id) {
+                item.unit_cost = await getInventoryItemCost(
+                    item.inventory_item_id
+                );       
             }
         }
 

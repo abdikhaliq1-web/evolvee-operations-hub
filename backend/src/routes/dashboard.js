@@ -6,7 +6,6 @@ const shopify = require('../services/integrations/shopify');
 const zohoCrm = require('../services/integrations/zohoCrm');
 const partnerDashboard = require('../services/integrations/partnerDashboard');
 const { computeProductMetrics } = require('../services/productMetrics');
-const zohoBooks = require('../services/integrations/zohoBooks');
 
 const router = express.Router();
 
@@ -78,11 +77,10 @@ router.get('/sales', requirePermission('sales'), asyncRoute(async (req, res) => 
 }));
 
 router.get('/product-performance', requirePermission('revenue'), asyncRoute(async (req, res) => {
-    const [sales, stock, costResult, zohoProducts] = await Promise.all([
+    const [sales, stock, costResult] = await Promise.all([
         shopify.getSalesOverview(),
         shopify.getStockLevels(),
-        query('SELECT sku, unit_cost FROM products WHERE unit_cost IS NOT NULL'),
-        zohoBooks.getProducts()
+        query('SELECT sku, unit_cost FROM products WHERE unit_cost IS NOT NULL')
     ]);
 
     // Build lookup maps so we can merge cost and stock data with sales per SKU.
@@ -92,19 +90,56 @@ router.get('/product-performance', requirePermission('revenue'), asyncRoute(asyn
     }
 
     const stockBySku = {};
+    const stockByVariantId = {};
     for (const s of stock) {
         stockBySku[s.sku] = s;
-    }
 
-    const marginBySku = {};
-    for (const product of zohoProducts) {
-        marginBySku[product.sku] = product.profitMargin;
+         if (s.variant_id) {
+            stockByVariantId[String(s.variant_id)] = s;
+        }
     }
 
     const rows = [];
     for (const p of sales) {
         const row = computeProductMetrics(p, stockBySku[p.sku], costBySku[p.sku]);
-        row.profit_margin = marginBySku[p.sku] ?? null;
+        let totalPotentialRevenue = 0;
+        let totalPotentialCost = 0;
+        let canCalculateMargin =
+            Array.isArray(p.variants) &&
+            p.variants.length > 0;
+
+        for (const variant of (p.variants || [])) {
+            const stockVariant =
+                stockByVariantId[String(variant.variant_id)];
+
+            if (
+                !stockVariant ||
+                stockVariant.unit_cost === null ||
+                stockVariant.unit_cost === undefined ||
+                !stockVariant.price
+            ) {
+                canCalculateMargin = false;
+                continue;
+            }
+
+            const quantity = Number(variant.quantity || 0);
+            const price = Number(stockVariant.price);
+            const cost = Number(stockVariant.unit_cost);
+
+            totalPotentialRevenue += price * quantity;
+            totalPotentialCost += cost * quantity;
+        }
+
+        if (canCalculateMargin && totalPotentialRevenue > 0) {
+            const potentialProfit =
+                totalPotentialRevenue - totalPotentialCost;
+
+            row.profit_margin =
+                (potentialProfit / totalPotentialRevenue) * 100;
+        } else {
+            row.profit_margin = null;
+        }
+
         rows.push(row);
     }
 
