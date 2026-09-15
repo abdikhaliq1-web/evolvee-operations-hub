@@ -262,6 +262,7 @@ def dashboard(request):
         "approved_at": partner.approved_at,
         "payment_schedule": payment_schedule_label,
         "tracking_url": partner.tracking_url,
+        "active_promo_codes": partner.get_active_promo_codes() if partner.is_active else [],
         "status_notifications": status_notifications,
     }
     return render(request, "partners/dashboard.html", context)

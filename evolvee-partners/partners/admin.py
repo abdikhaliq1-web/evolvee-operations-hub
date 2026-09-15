@@ -13,11 +13,20 @@ from partners.models import (
     PartnerClick,
     PartnerNotification,
     PartnerPayment,
+    PartnerPromoAssignment,
     PartnerSale,
     PartnerStatus,
     ProgramActivity,
+    PromoCode,
     ShopifyWebhookEvent,
 )
+
+
+class PartnerPromoAssignmentInline(admin.TabularInline):
+    model = PartnerPromoAssignment
+    extra = 0
+    autocomplete_fields = ("promo",)
+    readonly_fields = ("assigned_at",)
 
 
 class PartnerSaleInline(admin.TabularInline):
@@ -95,7 +104,7 @@ class PartnerAdmin(admin.ModelAdmin):
         "payment_details_data",
         "country",
     )
-    inlines = [PartnerSaleInline, PartnerNotificationInline]
+    inlines = [PartnerPromoAssignmentInline, PartnerSaleInline, PartnerNotificationInline]
     actions = [
         "approve_partners",
         "reject_partners",
@@ -235,6 +244,31 @@ class PartnerAdmin(admin.ModelAdmin):
         )
         response["Content-Disposition"] = 'attachment; filename="all_partners_export.xlsx"'
         return response
+
+
+class PartnerPromoAssignmentInlineForPromo(admin.TabularInline):
+    model = PartnerPromoAssignment
+    extra = 1
+    autocomplete_fields = ("partner",)
+    readonly_fields = ("assigned_at",)
+
+
+@admin.register(PromoCode)
+class PromoCodeAdmin(admin.ModelAdmin):
+    list_display = ("code", "title", "expires_at", "is_active", "assigned_count", "created_at")
+    list_filter = ("is_active", "expires_at")
+    search_fields = ("code", "title", "description")
+    readonly_fields = ("created_at", "updated_at")
+    inlines = [PartnerPromoAssignmentInlineForPromo]
+    fieldsets = (
+        (None, {"fields": ("code", "title", "description", "expires_at", "is_active")}),
+        ("Meta", {"fields": ("created_at", "updated_at")}),
+    )
+
+    def assigned_count(self, obj):
+        return obj.assignments.count()
+
+    assigned_count.short_description = "Creators"
 
 
 @admin.register(PartnerNotification)

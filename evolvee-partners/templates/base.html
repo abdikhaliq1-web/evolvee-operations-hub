@@ -10,16 +10,20 @@
     <link rel="stylesheet" href="/static/css/partner.css">
     {% block head_extra %}{% endblock %}
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
     <header class="site-header">
         <div class="container header-inner">
-            <a href="{% url 'partners:dashboard' %}" class="brand">
+            <a href="{{ main_website_url }}" class="brand">
                 <img src="/static/img/logo-placeholder.svg" alt="" class="brand-icon">
                 <span class="brand-name">Evolvée Radiance</span>
             </a>
             <button class="nav-toggle" aria-label="Toggle navigation" onclick="document.body.classList.toggle('nav-open')">☰</button>
             <nav class="site-nav">
-                <a href="{{ main_website_url }}">Shop</a>
+                <a href="{{ main_website_url }}">Home</a>
+                <a href="{{ main_website_url }}/collections/all">Shop</a>
+                <a href="{{ main_website_url }}/pages/about-us">About Us</a>
+                <a href="{% url 'partners:apply' %}"{% if request.resolver_match.url_name == 'apply' %} class="nav-active"{% endif %}>Become A Partner</a>
+                <a href="{{ main_website_url }}/pages/contact">Contact</a>
                 {% if user.is_authenticated %}
                     <a href="{% url 'partners:dashboard' %}">Dashboard</a>
                     {% if user.partner_profile and user.partner_profile.is_active %}
@@ -46,15 +50,14 @@
                     <a href="{% url 'partners:logout' %}">Logout</a>
                     {% endif %}
                 {% else %}
-                    <a href="{% url 'partners:apply' %}">Apply</a>
                     <a href="{% url 'partners:login' %}">Login</a>
-                    <a href="{% url 'partners:admin_login' %}" class="nav-admin">Admin</a>
                 {% endif %}
             </nav>
         </div>
     </header>
 
-    <main class="container">
+    {% block main %}
+    <main class="container site-main">
         {% if messages %}
             <div class="messages">
                 {% for message in messages %}
@@ -64,6 +67,7 @@
         {% endif %}
         {% block content %}{% endblock %}
     </main>
+    {% endblock %}
 
     <footer class="site-footer">
         <div class="container">

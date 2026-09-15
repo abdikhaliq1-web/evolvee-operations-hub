@@ -6,22 +6,24 @@ NOT CONNECTED YET — used by webhooks once PLACEHOLDER_SHOPIFY_* values are rep
 import re
 from urllib.parse import parse_qs, urlparse
 
-from django.db.models import Q
-
 from partners.models import Partner, PartnerStatus
+from partners.utils.codes import lookup_partner_by_discount_code, normalize_code
 
 
 REF_ATTRIBUTE_NAMES = {"ref", "partner_code", "partner_ref", "partner", "discount_code"}
 
 
 def lookup_partner_by_code(code: str) -> Partner | None:
-    normalized = code.strip().upper().replace(" ", "")
+    normalized = normalize_code(code)
     if not normalized:
         return None
 
+    partner = lookup_partner_by_discount_code(normalized)
+    if partner:
+        return partner
+
     return (
-        Partner.objects.filter(status=PartnerStatus.APPROVED)
-        .filter(Q(partner_code__iexact=normalized) | Q(discount_code__iexact=normalized))
+        Partner.objects.filter(status=PartnerStatus.APPROVED, partner_code__iexact=normalized)
         .first()
     )
 

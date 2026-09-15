@@ -12,12 +12,6 @@ router.get('/summary', requirePermission('revenue'), asyncRoute(async (req, res)
     res.json({ summary: data.summary });
 }));
 
-// creating a route to get the details of each product including their profit and profit margin.
-router.get('/products', requirePermission('revenue'), asyncRoute(async (req, res) => {
-    const data = await zohoBooks.getExpenseProfitSummary();
-    res.json({ products: data.products });
-}));
-
 module.exports = router;
 
 

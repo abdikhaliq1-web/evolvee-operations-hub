@@ -1,63 +1,86 @@
 {% extends "base.html" %}
 
-{% block title %}Apply — Evolvée Radiance Partners{% endblock %}
+{% block title %}Become A Partner — Evolvée Radiance{% endblock %}
+
+{% block body_class %}page-apply{% endblock %}
 
 {% block head_extra %}
 <script src="/static/js/location-cascade.js" defer></script>
 {% endblock %}
 
-{% block content %}
-<section class="page-hero">
-    <h1>Join the Partner Program</h1>
-    <p class="muted">Earn commissions by sharing Evolvée Radiance with your audience. Fast application — get your QR code once approved.</p>
-</section>
+{% block main %}
+<main class="apply-main">
+    {% if messages %}
+    <div class="container">
+        <div class="messages">
+            {% for message in messages %}
+                <div class="message {{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
 
-<section class="auth-card">
-    <form method="post" class="form" data-location-form data-location-initial-id="apply-location-initial">
-        {% csrf_token %}
-        {{ location_initial|json_script:"apply-location-initial" }}
-        <div class="form-row">
-            <label>First name</label>
-            <input type="text" name="first_name" required>
+    <section class="apply-banner" aria-labelledby="apply-heading">
+        <div class="apply-banner-inner">
+            <h1 id="apply-heading">Become A Partner</h1>
+            <div class="apply-banner-copy">
+                <p>Join the Evolvée Radiance Partner Program and earn commission by sharing products you genuinely love. As a partner, you'll help introduce our products to new audiences while growing with a beauty brand built around confidence, self-expression, and elevated everyday beauty.</p>
+                <p>We're looking for creators, beauty lovers, and brand supporters who connect with our vision and want to help bring Evolvée Radiance to more people.</p>
+            </div>
         </div>
-        <div class="form-row">
-            <label>Last name</label>
-            <input type="text" name="last_name" required>
-        </div>
-        <div class="form-row">
-            <label>Email</label>
-            <input type="email" name="email" required>
-        </div>
-        <div class="form-row">
-            <label>Password</label>
-            <input type="password" name="password" minlength="8" required>
-        </div>
-        <div class="form-row">
-            <label>Display / brand name</label>
-            <input type="text" name="partner_name" required>
-        </div>
-        <div class="form-row">
-            <label>Social media handle <span class="required">*</span></label>
-            <input type="text" name="social_handle" placeholder="@yourhandle" required>
-        </div>
+    </section>
 
-        <fieldset class="location-group">
-            <legend>Where you're based</legend>
-            {% include "partners/includes/location_fields.html" %}
-        </fieldset>
+    <div class="apply-form-wrap">
+        <div class="container">
+            <section class="auth-card auth-card--apply">
+                <form method="post" class="form apply-form" data-location-form data-location-initial-id="apply-location-initial">
+                    {% csrf_token %}
+                    {{ location_initial|json_script:"apply-location-initial" }}
+                    <div class="form-row">
+                        <label>First name</label>
+                        <input type="text" name="first_name" required>
+                    </div>
+                    <div class="form-row">
+                        <label>Last name</label>
+                        <input type="text" name="last_name" required>
+                    </div>
+                    <div class="form-row">
+                        <label>Email</label>
+                        <input type="email" name="email" required>
+                    </div>
+                    <div class="form-row">
+                        <label>Password</label>
+                        <input type="password" name="password" minlength="8" required>
+                    </div>
+                    <div class="form-row">
+                        <label>Display / brand name</label>
+                        <input type="text" name="partner_name" required>
+                    </div>
+                    <div class="form-row">
+                        <label>Social media handle <span class="required">*</span></label>
+                        <input type="text" name="social_handle" placeholder="@yourhandle" required>
+                    </div>
 
-        <div class="form-row">
-            <label>Bio (optional)</label>
-            <textarea name="bio" rows="3"></textarea>
-        </div>
-        <div class="form-row">
-            <label>Why do you want to partner? (optional)</label>
-            <textarea name="application_notes" rows="3"></textarea>
-        </div>
-        <p class="muted">After approval, you can add your payout details from your profile.</p>
-        <button type="submit" class="btn-ghost">Submit Application</button>
-    </form>
+                    <fieldset class="location-group">
+                        <legend>Where you're based</legend>
+                        {% include "partners/includes/location_fields.html" %}
+                    </fieldset>
 
-    <p class="muted center">Already a partner? <a href="{% url 'partners:login' %}">Log in</a></p>
-</section>
+                    <div class="form-row">
+                        <label>Bio (optional)</label>
+                        <textarea name="bio" rows="3"></textarea>
+                    </div>
+                    <div class="form-row">
+                        <label>Why do you want to partner? (optional)</label>
+                        <textarea name="application_notes" rows="3"></textarea>
+                    </div>
+                    <p class="muted apply-form-note">After approval, you can add your payout details from your profile.</p>
+                    <button type="submit" class="btn-ghost btn-apply-submit">Submit Application</button>
+                </form>
+
+                <p class="muted center apply-login-link">Already a partner? <a href="{% url 'partners:login' %}">Log in</a></p>
+            </section>
+        </div>
+    </div>
+</main>
 {% endblock %}

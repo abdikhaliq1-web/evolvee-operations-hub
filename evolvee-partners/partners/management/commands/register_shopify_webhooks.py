@@ -56,8 +56,8 @@ class Command(BaseCommand):
 
         if not base_url:
             raise CommandError(
-                "Replace PLACEHOLDER_SHOPIFY_WEBHOOK_BASE_URL in .env or pass --base-url "
-                "with the actual public URL when integration is ready."
+                "Set PARTNER_PORTAL_PUBLIC_URL in .env (your ngrok or production URL), "
+                "or pass --base-url."
             )
 
         for topic, path in WEBHOOK_TOPICS:

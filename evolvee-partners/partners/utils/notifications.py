@@ -8,7 +8,7 @@ from partners.models import Partner, PartnerNotification, PartnerStatus
 DEFAULT_STATUS_MESSAGES = {
     PartnerStatus.APPROVED: (
         "Your partner application has been approved!",
-        "Welcome to the Evolvée Radiance partner program. Your creator ID, discount code, QR code, and referral tools are ready on your dashboard.",
+        "Welcome to the Evolvée Radiance partner program. Your creator ID, personal discount code, QR code, and referral tools are ready on your dashboard.",
     ),
     PartnerStatus.REJECTED: (
         "Your partner application was not approved",
@@ -63,6 +63,38 @@ def notify_partner_payment_updated(partner: Partner) -> None:
     )
 
 
+def notify_partner_promo_assigned(partner: Partner, promo) -> PartnerNotification:
+    expiry_text = ""
+    if promo.expires_at:
+        expiry_text = f" Valid until {promo.expires_at:%B %d, %Y at %H:%M UTC}."
+
+    title = f"New promo code: {promo.code}"
+    body = (
+        f"You have been assigned the promo code {promo.code} ({promo.title}). "
+        f"Share it with your audience alongside your personal code.{expiry_text}"
+    )
+    if promo.description:
+        body = f"{body}\n\n{promo.description}"
+
+    notification = PartnerNotification.objects.create(
+        partner=partner,
+        notification_type=PartnerNotification.NotificationType.GENERAL,
+        title=title,
+        message=body,
+    )
+
+    if partner.user.email:
+        send_mail(
+            subject=f"[{settings.BRAND_NAME}] {title}",
+            message=body,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[partner.user.email],
+            fail_silently=True,
+        )
+
+    return notification
+
+
 def _send_status_email(partner: Partner, subject: str, body: str, status: str) -> None:
     if not partner.user.email:
         return
@@ -90,11 +122,11 @@ def _send_status_email(partner: Partner, subject: str, body: str, status: str) -
     )
 
 
+from partners.utils.portal_urls import get_portal_public_base
+
+
 def _portal_url() -> str:
-    base = settings.PARTNER_TRACKING_BASE_URL.rsplit("/r", 1)[0]
-    if not base or base == settings.PARTNER_TRACKING_BASE_URL:
-        return "http://127.0.0.1:8000/"
-    return f"{base}/"
+    return f"{get_portal_public_base()}/"
 
 
 def _profile_url() -> str:

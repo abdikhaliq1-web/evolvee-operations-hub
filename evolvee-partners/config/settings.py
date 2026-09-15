@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 
 from decouple import Csv, config
 
@@ -7,6 +8,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config("SECRET_KEY", default="django-insecure-evolvee-radiance-dev-key-change-me")
 DEBUG = config("DEBUG", default=True, cast=bool)
 ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1", cast=Csv())
+CSRF_TRUSTED_ORIGINS = config("CSRF_TRUSTED_ORIGINS", default="", cast=Csv())
 
 INSTALLED_APPS = [
     "config",
@@ -23,6 +25,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -78,6 +81,14 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+    },
+}
 
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
@@ -129,6 +140,9 @@ PARTNER_TRACKING_BASE_URL = config(
     "PARTNER_TRACKING_BASE_URL",
     default="http://127.0.0.1:8000/r",
 )
+# Public HTTPS URL for the partner portal (ngrok locally, your domain in production).
+# Webhooks, apply links, and tracking URLs are derived from this when possible.
+PARTNER_PORTAL_PUBLIC_URL = config("PARTNER_PORTAL_PUBLIC_URL", default="").strip().rstrip("/")
 # PLACEHOLDER — replace with actual Evolvée Radiance homepage when link is provided.
 # Used for logout redirects (partners and admin). Until then, users go to /apply/.
 MAIN_WEBSITE_URL = config("MAIN_WEBSITE_URL", default="PLACEHOLDER_MAIN_WEBSITE_URL")
@@ -137,8 +151,6 @@ PAYMENT_SCHEDULE = config("PAYMENT_SCHEDULE", default="monthly")  # monthly | bi
 # Optional path to MaxMind GeoLite2-City.mmdb for offline IP geolocation.
 GEOLITE2_CITY_PATH = config("GEOLITE2_CITY_PATH", default="")
 
-OPS_HUB_API_KEY = config("OPS_HUB_API_KEY", default="")
-
 # Shopify integration — NOT CONNECTED YET.
 # PLACEHOLDER — replace all SHOPIFY_* values in .env with actual credentials
 # and URLs when the Evolvée Radiance store integration is provided.
@@ -146,4 +158,63 @@ SHOPIFY_WEBHOOK_SECRET = config("SHOPIFY_WEBHOOK_SECRET", default="")
 SHOPIFY_SHOP_DOMAIN = config("SHOPIFY_SHOP_DOMAIN", default="")
 SHOPIFY_ACCESS_TOKEN = config("SHOPIFY_ACCESS_TOKEN", default="")
 SHOPIFY_API_VERSION = config("SHOPIFY_API_VERSION", default="2025-01")
-SHOPIFY_WEBHOOK_BASE_URL = config("SHOPIFY_WEBHOOK_BASE_URL", default="")
+SHOPIFY_WEBHOOK_BASE_URL = config("SHOPIFY_WEBHOOK_BASE_URL", default="").strip().rstrip("/")
+
+# ── Unified public portal URL (webhooks + apply + tracking stay in sync) ──
+def _is_placeholder_url(value: str) -> bool:
+    return not value or value.upper().startswith("PLACEHOLDER")
+
+
+def _normalize_origin(url: str) -> tuple[str, str | None]:
+    value = (url or "").strip().rstrip("/")
+    if _is_placeholder_url(value):
+        return "", None
+    if not value.startswith(("http://", "https://")):
+        value = f"https://{value}"
+    from urllib.parse import urlparse
+
+    parsed = urlparse(value)
+    if not parsed.netloc:
+        return "", None
+    return f"{parsed.scheme}://{parsed.netloc}", parsed.hostname
+
+
+_portal_origin, _portal_host = _normalize_origin(PARTNER_PORTAL_PUBLIC_URL)
+if not _portal_origin:
+    _portal_origin, _portal_host = _normalize_origin(SHOPIFY_WEBHOOK_BASE_URL)
+
+if _portal_origin:
+    PARTNER_PORTAL_PUBLIC_URL = _portal_origin
+    if not _normalize_origin(SHOPIFY_WEBHOOK_BASE_URL)[0]:
+        SHOPIFY_WEBHOOK_BASE_URL = _portal_origin
+    if PARTNER_TRACKING_BASE_URL.startswith(("http://127.0.0.1", "http://localhost")):
+        PARTNER_TRACKING_BASE_URL = f"{_portal_origin}/r"
+    if _portal_host and _portal_host not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS = [*ALLOWED_HOSTS, _portal_host]
+    if _portal_origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS = [*CSRF_TRUSTED_ORIGINS, _portal_origin]
+    if _portal_origin not in CORS_ALLOWED_ORIGINS:
+        CORS_ALLOWED_ORIGINS = [*CORS_ALLOWED_ORIGINS, _portal_origin]
+elif not _normalize_origin(SHOPIFY_WEBHOOK_BASE_URL)[0]:
+    SHOPIFY_WEBHOOK_BASE_URL = ""
+else:
+    _webhook_origin, _webhook_host = _normalize_origin(SHOPIFY_WEBHOOK_BASE_URL)
+    SHOPIFY_WEBHOOK_BASE_URL = _webhook_origin
+    if _webhook_host and _webhook_host not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS = [*ALLOWED_HOSTS, _webhook_host]
+    if _webhook_origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS = [*CSRF_TRUSTED_ORIGINS, _webhook_origin]
+
+# Render.com — auto-allow the service hostname (fixes DisallowedHost if env vars missing)
+_render_hostname = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
+if _render_hostname:
+    if _render_hostname not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS = [*ALLOWED_HOSTS, _render_hostname]
+    _render_origin = f"https://{_render_hostname}"
+    if _render_origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS = [*CSRF_TRUSTED_ORIGINS, _render_origin]
+    if PARTNER_TRACKING_BASE_URL.startswith("http://127.0.0.1"):
+        PARTNER_TRACKING_BASE_URL = f"https://{_render_hostname}/r"
+
+if os.environ.get("RENDER"):
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

@@ -32,7 +32,7 @@ class Partner(models.Model):
         null=True,
         blank=True,
         editable=False,
-        help_text="Store discount code based on creator name (ER- + 5–7 characters). Assigned on approval.",
+        help_text="Personal store discount code from the creator's name (permanent, does not expire).",
     )
     partner_name = models.CharField(max_length=150)
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="partner_profile")
@@ -120,6 +120,21 @@ class Partner(models.Model):
     def share_url(self):
         return self.tracking_url or self.referral_url
 
+    def get_active_promo_codes(self):
+        from django.db.models import Q
+        from django.utils import timezone
+
+        now = timezone.now()
+        return (
+            PromoCode.objects.filter(
+                assignments__partner=self,
+                is_active=True,
+            )
+            .filter(Q(expires_at__isnull=True) | Q(expires_at__gt=now))
+            .distinct()
+            .order_by("expires_at", "title")
+        )
+
     @property
     def location_label(self):
         from partners.utils.geoip import format_location
@@ -137,6 +152,65 @@ class Partner(models.Model):
         elif self.country and not self.continent:
             self.continent = country_to_continent(self.country)
         super().save(*args, **kwargs)
+
+
+class PromoCode(models.Model):
+    """Limited-time campaign codes assigned to creators (can expire)."""
+
+    code = models.CharField(max_length=32, unique=True)
+    title = models.CharField(max_length=200, help_text="Internal label, e.g. Summer Launch 2026.")
+    description = models.TextField(blank=True)
+    expires_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When this promo stops working at checkout. Leave blank only for open-ended campaigns.",
+    )
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.code} — {self.title}"
+
+    def save(self, *args, **kwargs):
+        from django.core.exceptions import ValidationError
+
+        from partners.utils.codes import code_is_taken, normalize_code
+
+        self.code = normalize_code(self.code)
+        if not self.code:
+            raise ValidationError("Promo code cannot be empty.")
+        if code_is_taken(self.code, exclude_promo_pk=self.pk):
+            raise ValidationError(f"Code {self.code} is already in use.")
+        super().save(*args, **kwargs)
+
+    @property
+    def is_expired(self):
+        from django.utils import timezone
+
+        return bool(self.expires_at and timezone.now() >= self.expires_at)
+
+    @property
+    def is_valid(self):
+        return self.is_active and not self.is_expired
+
+
+class PartnerPromoAssignment(models.Model):
+    partner = models.ForeignKey(Partner, on_delete=models.CASCADE, related_name="promo_assignments")
+    promo = models.ForeignKey(PromoCode, on_delete=models.CASCADE, related_name="assignments")
+    assigned_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-assigned_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["partner", "promo"], name="unique_partner_promo"),
+        ]
+
+    def __str__(self):
+        return f"{self.partner.partner_name} → {self.promo.code}"
 
 
 class PartnerNotification(models.Model):
