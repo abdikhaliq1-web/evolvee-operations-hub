@@ -1,5 +1,6 @@
 from django.urls import path
 
+from partners.api.ops_hub import OpsSummaryView
 from partners.api.views import (
     MarketingAssetListView,
     PartnerApplicationView,
@@ -19,6 +20,7 @@ from partners.api.form_data_views import (
 app_name = "partners_api"
 
 urlpatterns = [
+    path("ops-hub/summary/", OpsSummaryView.as_view(), name="ops_hub_summary"),
     path("apply/", PartnerApplicationView.as_view(), name="apply"),
     path("me/", PartnerProfileView.as_view(), name="profile"),
     path("stats/", PartnerStatsView.as_view(), name="stats"),

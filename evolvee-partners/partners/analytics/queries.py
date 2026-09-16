@@ -48,6 +48,36 @@ def get_program_kpis() -> dict:
     }
 
 
+def _money(value) -> float:
+    return float(value or 0)
+
+
+def get_ops_hub_summary() -> dict:
+    """Read-only snapshot for the Operations Hub. Does not change partner or QR data."""
+    kpis = get_program_kpis()
+    return {
+        "generated_at": timezone.now().isoformat(),
+        "kpis": {
+            **kpis,
+            "total_revenue": _money(kpis["total_revenue"]),
+            "total_commission": _money(kpis["total_commission"]),
+            "pending_commission": _money(kpis["pending_commission"]),
+        },
+        "leaderboard": [
+            {
+                "partner_name": row["partner_name"],
+                "partner_code": row["partner_code"],
+                "location": row["location"],
+                "clicks": row["clicks"],
+                "conversions": row["conversions"],
+                "revenue": _money(row["revenue"]),
+                "commission": _money(row["commission"]),
+            }
+            for row in get_partner_leaderboard(limit=10)
+        ],
+    }
+
+
 def get_daily_metrics(days: int = 30) -> dict:
     since = timezone.now() - timedelta(days=days)
 

@@ -148,6 +148,10 @@ PARTNER_PORTAL_PUBLIC_URL = config("PARTNER_PORTAL_PUBLIC_URL", default="").stri
 MAIN_WEBSITE_URL = config("MAIN_WEBSITE_URL", default="PLACEHOLDER_MAIN_WEBSITE_URL")
 PAYMENT_SCHEDULE = config("PAYMENT_SCHEDULE", default="monthly")  # monthly | bi-weekly
 
+# Shared secret for the Operations Hub read-only summary. Empty disables /api/ops-hub/summary/.
+# Hub auth header is X-Ops-Hub-Key. Partner portal, QR tracking, and Shopify never use this key.
+OPS_HUB_API_KEY = config("OPS_HUB_API_KEY", default="").strip()
+
 # Optional path to MaxMind GeoLite2-City.mmdb for offline IP geolocation.
 GEOLITE2_CITY_PATH = config("GEOLITE2_CITY_PATH", default="")
 
