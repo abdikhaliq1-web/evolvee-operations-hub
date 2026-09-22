@@ -108,16 +108,16 @@ function ExecKpiCards({ inventory, sales, revenue, shipping, alerts, expenseSumm
     }
 
     const summary = expenseSummary?.data?.summary ?? expenseSummary?.data ?? {};
-    if (summary && (summary.netProfit != null || summary.profitMargin != null)) {
+    if (summary) {
         cards.push({
             key: 'company-profit',
             label: 'Company profit - last 30 days',
-            value: formatGBP(summary.netProfit ?? 0),
+            value: summary.netProfit != null ? formatGBP(summary.netProfit): 'N/A',
         });
         cards.push({
             key: 'company-profit-margin',
             label: 'Profit margin - last 30 days',
-            value: `${Number(summary.profitMargin ?? 0).toFixed(2)}%`,
+            value: summary.profitMargin != null ? `${Number(summary.profitMargin).toFixed(2)}%` : 'N/A',
         });
     }
 
