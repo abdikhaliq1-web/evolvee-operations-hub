@@ -6,10 +6,13 @@ from django.utils import timezone
 
 from partners.models import Partner, PartnerSale, SaleStatus
 
+def as_money(value) -> Decimal:
+    if value is None:
+        return Decimal("0.00")
+    return Decimal(str(value)).quantize(Decimal("0.01"))
 
 def calculate_commission(total: Decimal, commission_percentage: Decimal) -> Decimal:
-    return (total * commission_percentage / Decimal("100")).quantize(Decimal("0.01"))
-
+    return as_money(Decimal(str(total)) * Decimal(str(commission_percentage)) / Decimal("100.00"))
 
 def record_partner_sale(
     *,
@@ -44,8 +47,8 @@ def refresh_partner_totals(partner: Partner) -> None:
         sales_total=Sum("total"),
         commission_total=Sum("commission_amount"),
     )
-    partner.total_sales = totals["sales_total"] or Decimal("0.00")
-    partner.total_commission_earned = totals["commission_total"] or Decimal("0.00")
+    partner.total_sales = as_money(totals["sales_total"])
+    partner.total_commission_earned = as_money(totals["commission_total"])
     partner.save(update_fields=["total_sales", "total_commission_earned", "updated_at"])
 
 
@@ -58,20 +61,23 @@ def get_partner_stats(partner: Partner) -> dict:
         clicked_at__gte=thirty_days_ago,
         converted=True,
     ).count()
-    pending_commission = partner.sales.filter(status=SaleStatus.PENDING).aggregate(
-        total=Sum("commission_amount")
-    )["total"] or Decimal("0.00")
-    approved_commission = partner.sales.filter(status=SaleStatus.APPROVED).aggregate(
-        total=Sum("commission_amount")
-    )["total"] or Decimal("0.00")
+    refresh_partner_totals(partner)
+    partner.refresh_from_db(fields=["total_sales", "total_commission_earned"])
+
+    pending_commission = as_money(
+        partner.sales.filter(status=SaleStatus.PENDING).aggregate(total=Sum("commission_amount"))["total"]
+    )
+    approved_commission = as_money(
+        partner.sales.filter(status=SaleStatus.APPROVED).aggregate(total=Sum("commission_amount"))["total"]
+    )
 
     return {
         "total_clicks": partner.clicks.count(),
         "total_conversions": partner.clicks.filter(converted=True).count(),
         "recent_clicks": recent_clicks,
         "recent_conversions": recent_conversions,
-        "total_sales": partner.total_sales,
-        "total_commission_earned": partner.total_commission_earned,
+        "total_sales": as_money(partner.total_sales),
+        "total_commission_earned": as_money(partner.total_commission_earned),
         "pending_commission": pending_commission,
         "approved_commission": approved_commission,
         "conversion_rate": round(

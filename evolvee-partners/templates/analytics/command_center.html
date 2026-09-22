@@ -35,8 +35,8 @@
     <div class="stat-card"><span class="stat-label">Approved Partners</span><span class="stat-value">{{ kpis.approved_partners }}</span><span class="stat-sub">{{ kpis.pending_partners }} pending</span></div>
     <div class="stat-card"><span class="stat-label">QR Scans</span><span class="stat-value">{{ kpis.total_clicks }}</span><span class="stat-sub">{{ kpis.recent_clicks }} last 30d</span></div>
     <div class="stat-card"><span class="stat-label">Conversions</span><span class="stat-value">{{ kpis.total_conversions }}</span><span class="stat-sub">{{ kpis.conversion_rate }}% rate</span></div>
-    <div class="stat-card"><span class="stat-label">Revenue</span><span class="stat-value">${{ kpis.total_revenue }}</span><span class="stat-sub">{{ kpis.total_sales_count }} sales</span></div>
-    <div class="stat-card highlight"><span class="stat-label">Commissions</span><span class="stat-value">${{ kpis.total_commission }}</span><span class="stat-sub">${{ kpis.pending_commission }} pending</span></div>
+    <div class="stat-card"><span class="stat-label">Revenue</span><span class="stat-value">${{ kpis.total_revenue|floatformat:2 }}</span><span class="stat-sub">{{ kpis.total_sales_count }} sales</span></div>
+    <div class="stat-card highlight"><span class="stat-label">Commissions</span><span class="stat-value">${{ kpis.total_commission|floatformat:2 }}</span><span class="stat-sub">${{ kpis.pending_commission|floatformat:2 }} pending</span></div>
 </div>
 
 <div class="two-col">
@@ -124,8 +124,8 @@
                         <td>{{ row.location }}</td>
                         <td>{{ row.clicks }}</td>
                         <td>{{ row.conversions }}</td>
-                        <td>${{ row.revenue }}</td>
-                        <td>${{ row.commission }}</td>
+                        <td>${{ row.revenue|floatformat:2 }}</td>
+                        <td>${{ row.commission|floatformat:2 }}</td>
                     </tr>
                     {% empty %}
                     <tr><td colspan="6" class="muted">No approved partners yet.</td></tr>
