@@ -46,18 +46,28 @@ services:
           - key: NODE_ENV
             value: production
 
-          # Render Postgres presents a cert not in the default CA bundle. The backend
-          # refuses an unverified TLS connection in production unless told how to handle
-          # it; no-verify enables SSL without chain verification (the standard Render
-          # setup). To verify instead, drop this and set DATABASE_CA_CERT to Render's CA.
-          - key: DATABASE_SSL
-            value: no-verify
+          # Render Postgres presents a cert that isn't in the default CA bundle, so the
+          # CA has to be supplied explicitly. Paste the PEM from the database's "Connect"
+          # page (Download CA Certificate) when prompted during Blueprint creation; the
+          # backend then verifies the chain on every connection.
+          #
+          # Do NOT substitute DATABASE_SSL=no-verify to skip this. That encrypts the
+          # connection without authenticating the server, which leaves the database
+          # traffic open to an active man-in-the-middle.
+          - key: DATABASE_CA_CERT
+            sync: false
 
           # Your Netlify URL, e.g. https://your-site.netlify.app — you are prompted for
           # this during Blueprint creation. A trailing slash is fine; comma-separate
-          # multiple origins.
+          # multiple origins. This is also the allowlist that decides which origins may
+          # send the session cookie, so keep it exact.
           - key: CORS_ORIGIN
             sync: false
+
+          # Frontend (Netlify) and API (Render) are different sites, so the session
+          # cookie must be SameSite=None; Secure. Both ends are HTTPS, so this is safe.
+          - key: CROSS_SITE_COOKIES
+            value: "true"
 
           # Do NOT add a PORT variable. Render injects its own PORT and the backend
           # already reads process.env.PORT; setting one here causes "no open ports

@@ -1,17 +1,28 @@
 const express = require('express');
 const { query, pool } = require('../config/db');
-const { authenticate, requirePermission } = require('../middleware/auth');
+const { authenticate, requirePermission, requireWrite } = require('../middleware/auth');
 const { asyncRoute } = require('../middleware/errorHandler');
 const { validateId } = require('../middleware/validateId');
 const shopify = require('../services/integrations/shopify');
 const shopifyReviews = require('../services/integrations/shopifyReviews');
 const { computeProductMetrics } = require('../services/productMetrics');
 const { recordAudit } = require('../services/audit');
+const { rateLimit } = require('../middleware/rateLimit');
 
 const router = express.Router();
 
-router.use(authenticate, requirePermission('manufacturers'));
+router.use(authenticate, requirePermission('manufacturers'), requireWrite('manufacturers'));
 router.param('id', validateId);
+
+// This endpoint calls Shopify on every request, so an unthrottled loop burns the
+// store's API quota and takes the dashboard down for everyone.
+const syncRateLimit = rateLimit(
+    [
+        { name: 'sync-user', key: (req) => req.user.id, windowMs: 60 * 1000, max: 5 },
+        { name: 'sync-all', key: () => 'global', windowMs: 60 * 1000, max: 20 },
+    ],
+    'Sync was run too recently. Please wait a minute and try again.'
+);
 
 router.get('/', asyncRoute(async (req, res) => {
     const sql =
@@ -94,7 +105,7 @@ router.get('/:id', asyncRoute(async (req, res) => {
     });
 }));
 
-router.post('/sync-shopify', asyncRoute(async (req, res) => {
+router.post('/sync-shopify', syncRateLimit, asyncRoute(async (req, res) => {
     const stock = await shopify.getStockLevels();
 
     let synced = 0;

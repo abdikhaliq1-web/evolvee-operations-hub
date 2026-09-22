@@ -1,11 +1,11 @@
 const express = require('express');
 const { query } = require('../config/db');
-const { authenticate, requirePermission } = require('../middleware/auth');
+const { authenticate, requirePermission, requireWrite } = require('../middleware/auth');
 const { asyncRoute } = require('../middleware/errorHandler');
 
 const router = express.Router();
 
-router.use(authenticate, requirePermission('users'));
+router.use(authenticate, requirePermission('users'), requireWrite('users'));
 
 router.get('/', asyncRoute(async (req, res) => {
     const result = await query(

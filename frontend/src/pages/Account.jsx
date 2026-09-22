@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { api, setToken } from '../api.js';
+import { api, setExpiry } from '../api.js';
 import { onEnter, useFlash } from '../ui.jsx';
 
 export default function Account() {
@@ -28,8 +28,9 @@ export default function Account() {
                 body: JSON.stringify({ current_password: current, new_password: next }),
             });
 
-            // A password change rotates the auth token; store the new one.
-            if (res && res.token) setToken(res.token);
+            // A password change rotates the token; the server replaced the cookie, so
+            // only the local expiry hint needs updating.
+            if (res && res.expires_at) setExpiry(res.expires_at);
 
             setCurrent('');
             setNext('');
@@ -65,7 +66,7 @@ export default function Account() {
                     />
                 </div>
                 <div className="field">
-                    <label htmlFor="next">New password (min 8 chars)</label>
+                    <label htmlFor="next">New password (min 12 chars)</label>
 
                     <input
                         id="next"

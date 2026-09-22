@@ -3,8 +3,12 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { query } = require('../config/db');
 const env = require('../config/env');
-const { authenticate, ROLE_PERMISSIONS } = require('../middleware/auth');
+const { authenticate, ROLE_PERMISSIONS, WRITE_PERMISSIONS, ALERT_DELETE_ROLES } = require('../middleware/auth');
 const { asyncRoute } = require('../middleware/errorHandler');
+const { rateLimit } = require('../middleware/rateLimit');
+const { passwordProblem } = require('../middleware/passwordPolicy');
+const { issueSession, clearSession } = require('../middleware/session');
+const { recordAudit } = require('../services/audit');
 
 const router = express.Router();
 
@@ -13,49 +17,55 @@ function permissionMapFor(role) {
     return role === 'admin' || role === 'developer' ? ROLE_PERMISSIONS : undefined;
 }
 
+function writeMapFor(role) {
+    return role === 'admin' || role === 'developer' ? WRITE_PERMISSIONS : undefined;
+}
+
+// What the client needs to render the UI. The server re-checks all of it on every
+// request; this only decides which controls are worth showing.
+function sessionUser(user) {
+    return {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        permissions: ROLE_PERMISSIONS[user.role] || [],
+        writable: WRITE_PERMISSIONS[user.role] || [],
+        role_permissions: permissionMapFor(user.role),
+        role_writable: writeMapFor(user.role),
+        // Sent rather than hardcoded client-side so the policy lives in one place.
+        alert_delete_roles: ALERT_DELETE_ROLES,
+    };
+}
+
 // Used to keep compare timing consistent when the user isn't found, to avoid leaking existence via timing.
 const DUMMY_HASH = bcrypt.hashSync('unused-timing-equaliser', 10);
 
-// In-memory login attempt tracker, keyed by ip/email combos.
-const loginAttempts = new Map();
+const WINDOW_MS = 15 * 60 * 1000;
 
-function overLimit(key, now, windowMs, max) {
-    const rec = loginAttempts.get(key);
-
-    if (!rec || now - rec.start > windowMs) {
-        loginAttempts.set(key, { start: now, count: 1 });
-        return false;
-    }
-
-    rec.count += 1;
-    return rec.count > max;
+function bodyEmail(req) {
+    return req.body && req.body.email ? String(req.body.email).toLowerCase().trim() : null;
 }
 
-function rateLimit(req, res, next) {
-    const windowMs = 15 * 60 * 1000;
-    const now = Date.now();
+// The per-account rule is the one that matters: without it, an attacker rotating
+// source IPs gets an unlimited number of guesses against a single account.
+const loginRateLimit = rateLimit(
+    [
+        { name: 'login-ip-email', key: (req) => req.ip + '|' + bodyEmail(req), windowMs: WINDOW_MS, max: 10 },
+        { name: 'login-email', key: bodyEmail, windowMs: WINDOW_MS, max: 20 },
+        { name: 'login-ip', key: (req) => req.ip, windowMs: WINDOW_MS, max: 50 },
+    ],
+    'Too many attempts. Please wait and try again.'
+);
 
-    // Prevent unbounded growth of the map by sweeping stale entries.
-    if (loginAttempts.size > 5000) {
-        for (const [k, v] of loginAttempts) {
-            if (now - v.start > windowMs) {
-                loginAttempts.delete(k);
-            }
-        }
-    }
+const passwordRateLimit = rateLimit(
+    [
+        { name: 'pw-ip', key: (req) => req.ip, windowMs: WINDOW_MS, max: 20 },
+    ],
+    'Too many attempts. Please wait and try again.'
+);
 
-    const email = req.body && req.body.email ? String(req.body.email).toLowerCase().trim() : '';
-    const perEmail = overLimit(req.ip + '|' + email, now, windowMs, 10);
-    const perIp = overLimit('ip|' + req.ip, now, windowMs, 50);
-
-    if (perEmail || perIp) {
-        return res.status(429).json({ error: 'Too many attempts. Please wait and try again.' });
-    }
-
-    next();
-}
-
-router.post('/login', rateLimit, asyncRoute(async (req, res) => {
+router.post('/login', loginRateLimit, asyncRoute(async (req, res) => {
     const body = req.body || {};
     const email = body.email;
     const password = body.password;
@@ -74,13 +84,21 @@ router.post('/login', rateLimit, asyncRoute(async (req, res) => {
     const user = result.rows[0];
 
     if (!user) {
-        bcrypt.compareSync(password, DUMMY_HASH);
+        await bcrypt.compare(String(password), DUMMY_HASH);
+        await recordAudit(req, {
+            action: 'login_failed', entity: 'user', entityId: null,
+            details: { email: normalisedEmail, reason: 'unknown_or_inactive' },
+        });
         return res.status(401).json({ error: 'Incorrect email or password.' });
     }
 
-    const passwordMatches = bcrypt.compareSync(password, user.password_hash);
+    const passwordMatches = await bcrypt.compare(String(password), user.password_hash);
 
     if (!passwordMatches) {
+        await recordAudit(req, {
+            action: 'login_failed', entity: 'user', entityId: user.id,
+            details: { email: normalisedEmail, reason: 'bad_password' },
+        });
         return res.status(401).json({ error: 'Incorrect email or password.' });
     }
 
@@ -93,37 +111,43 @@ router.post('/login', rateLimit, asyncRoute(async (req, res) => {
     };
     const tokenOptions = { expiresIn: env.jwtExpiresIn };
     const token = jwt.sign(tokenPayload, env.jwtSecret, tokenOptions);
-    const permissions = ROLE_PERMISSIONS[user.role] || [];
+
+    await recordAudit(
+        { user: { id: user.id, name: user.full_name } },
+        { action: 'login', entity: 'user', entityId: user.id, details: { email: user.email } }
+    );
+
+    // The JWT goes back as an httpOnly cookie, never in the body, so page scripts
+    // cannot read it. The client gets the CSRF token and an expiry hint instead.
+    const session = issueSession(res, token);
 
     res.json({
-        token: token,
-        user: {
+        csrf_token: session.csrf,
+        expires_at: session.expiresAt,
+        user: sessionUser({
             id: user.id,
             email: user.email,
             name: user.full_name,
             role: user.role,
-            permissions: permissions,
-            role_permissions: permissionMapFor(user.role)
-        }
+        })
     });
 }));
 
 router.get('/me', authenticate, (req, res) => {
-    const permissions = ROLE_PERMISSIONS[req.user.role] || [];
+    const user = sessionUser(req.user);
 
-    const user = {
-        id: req.user.id,
-        email: req.user.email,
-        name: req.user.name,
-        role: req.user.role,
-        permissions: permissions,
-        role_permissions: permissionMapFor(req.user.role)
-    };
-
-    res.json({ user: user });
+    res.json({ user: user, expires_at: req.tokenExp });
 });
 
-router.post('/password', rateLimit, authenticate, asyncRoute(async (req, res) => {
+// Clearing localStorage alone leaves a stolen token valid for the rest of its
+// lifetime, so signing out has to invalidate it server-side too.
+router.post('/logout', authenticate, asyncRoute(async (req, res) => {
+    await query('UPDATE users SET token_version = token_version + 1 WHERE id = $1', [req.user.id]);
+    clearSession(res);
+    res.json({ ok: true });
+}));
+
+router.post('/password', passwordRateLimit, authenticate, asyncRoute(async (req, res) => {
     const body = req.body || {};
     const currentPassword = body.current_password;
     const newPassword = body.new_password;
@@ -131,8 +155,11 @@ router.post('/password', rateLimit, authenticate, asyncRoute(async (req, res) =>
     if (!currentPassword || !newPassword) {
         return res.status(400).json({ error: 'Current and new password are required.' });
     }
-    if (String(newPassword).length < 8) {
-        return res.status(400).json({ error: 'Password must be at least 8 characters.' });
+
+    const problem = passwordProblem(newPassword, req.user.email);
+
+    if (problem) {
+        return res.status(400).json({ error: problem });
     }
 
     const result = await query('SELECT password_hash FROM users WHERE id = $1', [req.user.id]);
@@ -142,12 +169,12 @@ router.post('/password', rateLimit, authenticate, asyncRoute(async (req, res) =>
         return res.status(404).json({ error: 'User not found.' });
     }
 
-    if (!bcrypt.compareSync(currentPassword, user.password_hash)) {
+    if (!(await bcrypt.compare(String(currentPassword), user.password_hash))) {
         return res.status(400).json({ error: 'Current password is incorrect.' });
     }
 
     // Bumping token_version invalidates any previously issued tokens.
-    const newHash = bcrypt.hashSync(newPassword, 10);
+    const newHash = await bcrypt.hash(String(newPassword), 10);
     const updated = await query(
         'UPDATE users SET password_hash = $1, token_version = token_version + 1 WHERE id = $2 ' +
         'RETURNING id, email, role, full_name, token_version',
@@ -155,25 +182,21 @@ router.post('/password', rateLimit, authenticate, asyncRoute(async (req, res) =>
     );
     const u = updated.rows[0];
 
+    await recordAudit(req, {
+        action: 'password_change', entity: 'user', entityId: u.id, details: { email: u.email },
+    });
+
     const token = jwt.sign(
         { id: u.id, email: u.email, role: u.role, name: u.full_name, token_version: u.token_version },
         env.jwtSecret,
         { expiresIn: env.jwtExpiresIn }
     );
 
-    res.json({ ok: true, token: token });
-}));
+    // The old token was just invalidated, so replace the cookie in place rather than
+    // signing the user out of the session they are actively using.
+    const session = issueSession(res, token);
 
-// Quick self-check for the rate limiter logic, run only when this file is executed directly.
-if (require.main === module) {
-    const assert = require('assert');
-    const now = Date.now();
-    const w = 1000;
-    for (let i = 0; i < 50; i++) {
-        assert.strictEqual(overLimit('ip|x', now, w, 50), false);
-    }
-    assert.strictEqual(overLimit('ip|x', now, w, 50), true);
-    console.log('rateLimit self-check passed.');
-}
+    res.json({ ok: true, csrf_token: session.csrf, expires_at: session.expiresAt });
+}));
 
 module.exports = router;

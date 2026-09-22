@@ -22,10 +22,12 @@ export default function Login() {
         setError('');
 
         try {
-            // Plain fetch, not api(): no token exists yet.
+            // Plain fetch, not api(): no session exists yet. credentials:'include' is
+            // still required — it is what lets the server's Set-Cookie stick.
             const res = await fetch(`${import.meta.env.VITE_API_BASE || ''}/api/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({ email, password }),
             });
 
@@ -34,11 +36,11 @@ export default function Login() {
             if (!res.ok) {
                 throw new Error(data.error || 'Sign in failed.');
             }
-            if (!data.token) {
+            if (!data.user) {
                 throw new Error('Unexpected response — check VITE_API_BASE points to the backend.');
             }
 
-            setSession(data.token, data.user);
+            setSession(data.user, data.expires_at);
             navigate('/');
         } catch (err) {
             setError(resolveErrorMessage(err));

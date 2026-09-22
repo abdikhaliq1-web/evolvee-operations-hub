@@ -1,13 +1,13 @@
 const express = require('express');
 const { query } = require('../config/db');
-const { authenticate, requirePermission } = require('../middleware/auth');
+const { authenticate, requirePermission, requireWrite } = require('../middleware/auth');
 const { asyncRoute } = require('../middleware/errorHandler');
 const { validateId } = require('../middleware/validateId');
 const { recordAudit } = require('../services/audit');
 
 const router = express.Router();
 
-router.use(authenticate, requirePermission('manufacturers'));
+router.use(authenticate, requirePermission('manufacturers'), requireWrite('manufacturers'));
 router.param('id', validateId);
 
 router.get('/', asyncRoute(async (req, res) => {

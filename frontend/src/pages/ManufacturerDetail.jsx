@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
-import { api } from '../api.js';
+import { api, canWrite } from '../api.js';
 import { statusPillClass, formatStatus } from '../status.js';
 import { onEnter } from '../ui.jsx';
 
@@ -17,6 +17,7 @@ export default function ManufacturerDetail() {
     const [reorder, setReorder] = useState({ product_id: '', quantity_ordered: '', notes: '' });
     const [metrics, setMetrics] = useState({ lead_time_days: '', min_order_quantity: '', payment_terms: '', quality_rating: '' });
     const [busy, setBusy] = useState(false);
+    const writable = canWrite('manufacturers');
 
     const load = useCallback(function loadManufacturer() {
         api(`/manufacturers/${id}`)
@@ -66,7 +67,7 @@ export default function ManufacturerDetail() {
 
     // POST a sub-resource, then clear its form and reload.
     async function post(path, body, reset) {
-        if (busy) return;
+        if (busy || !writable) return;
         setError('');
         setBusy(true);
         try {
@@ -105,7 +106,7 @@ export default function ManufacturerDetail() {
     }
 
     async function saveMetrics() {
-        if (busy) return;
+        if (busy || !writable) return;
         setError('');
         setBusy(true);
         try {
@@ -239,9 +240,11 @@ export default function ManufacturerDetail() {
                         (from received production runs)
                     </p>
 
+                    {writable && (
                     <p>
                         <button className="primary" onClick={saveMetrics} disabled={busy}>Save metrics</button>
                     </p>
+                    )}
                 </section>
 
                 <section className="tile">
@@ -306,11 +309,13 @@ export default function ManufacturerDetail() {
                         />
                     </div>
 
+                    {writable && (
                     <p>
                         <button className="primary" onClick={submitContact} disabled={busy}>
                             Add contact
                         </button>
                     </p>
+                    )}
                 </section>
 
                 <section className="tile">
@@ -366,11 +371,13 @@ export default function ManufacturerDetail() {
                         />
                     </div>
 
+                    {writable && (
                     <p>
                         <button className="primary" onClick={submitComm} disabled={busy}>
                             Save log entry
                         </button>
                     </p>
+                    )}
                 </section>
 
                 <section className="tile">
@@ -453,11 +460,13 @@ export default function ManufacturerDetail() {
                         />
                     </div>
 
+                    {writable && (
                     <p>
                         <button className="primary" onClick={submitReorder} disabled={busy}>
                             Log reorder
                         </button>
                     </p>
+                    )}
                 </section>
 
                 <section className="tile wide">

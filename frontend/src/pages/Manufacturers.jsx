@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api } from '../api.js';
+import { api, canWrite } from '../api.js';
 import { useTableView, SortHeader, SearchBox, onEnter } from '../ui.jsx';
 
 function lastContactCell(iso) {
@@ -22,6 +22,7 @@ export default function Manufacturers() {
     const [adding, setAdding] = useState(false);
     const [saving, setSaving] = useState(false);
     const { query, setQuery, view, sort, toggleSort } = useTableView(list, ['name', 'country', 'notes']);
+    const writable = canWrite('manufacturers');
 
     function load() {
         api('/manufacturers')
@@ -161,13 +162,13 @@ export default function Manufacturers() {
                         <button onClick={() => setAdding(false)} disabled={saving}>Cancel</button>
                     </div>
                 </div>
-            ) : (
+            ) : writable ? (
                 <p>
                     <button className="primary" onClick={() => setAdding(true)}>
                         Add manufacturer
                     </button>
                 </p>
-            )}
+            ) : null}
 
             {!list ? (
                 <p className="empty">Loading…</p>
