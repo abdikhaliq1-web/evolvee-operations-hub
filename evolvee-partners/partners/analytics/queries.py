@@ -14,6 +14,7 @@ from partners.models import (
     SaleStatus,
 )
 
+from partners.utils.commission import as_money
 
 def get_program_kpis() -> dict:
     now = timezone.now()
@@ -41,9 +42,9 @@ def get_program_kpis() -> dict:
             (total_conversions / total_clicks * 100) if total_clicks else 0,
             1,
         ),
-        "total_revenue": total_revenue,
-        "total_commission": total_commission,
-        "pending_commission": pending_commission,
+        "total_revenue": as_money(total_revenue),
+        "total_commission": as_money(total_commission),
+        "pending_commission": as_money(pending_commission),
         "total_sales_count": approved_sales.count(),
     }
 
@@ -153,8 +154,8 @@ def get_partner_leaderboard(limit: int = 10) -> list[dict]:
                 "continent": partner.continent,
                 "clicks": partner.click_count,
                 "conversions": partner.conversion_count,
-                "revenue": partner.total_sales,
-                "commission": partner.total_commission_earned,
+                "revenue": as_money(partner.total_sales),
+                "commission": as_money(partner.total_commission_earned),
             }
         )
     return leaderboard

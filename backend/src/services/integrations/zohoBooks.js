@@ -33,31 +33,27 @@ async function getExpenseProfitSummary() {
         let sales = [];
         let expenses = [];
 
+        sales = await getSalesOverview().catch((err) => {
+            console.warn('Shopify sales unavailable:', err.message);
+            return [];
+        });
+
         try {
             const token = await getZohoAccessToken();
-            [sales, expenses] = await Promise.all([
-                getSalesOverview(),
-                fetchExpenses(token),
-            ]);
+            expenses = await fetchExpenses(token);
         } catch (err) {
             if (err.status === 401) {
                 clearZohoToken();
-
                 try {
                     const token = await getZohoAccessToken();
-                    [sales, expenses] = await Promise.all([
-                        getSalesOverview(),
-                        fetchExpenses(token)
-                    ]);
+                     expenses = await fetchExpenses(token)                   
                 } catch (retryErr) {
                     console.warn('Zoho Books retry failed, using Shopify sales-only fallback:', retryErr.message);
-                    expenses = [];
-                    sales = await getSalesOverview().catch(() => []);
+                    expenses = null;
                 }
             } else {
                 console.warn('Zoho Books data unavailable, using Shopify sales-only fallback:', err.message);
-                expenses = [];
-                sales = await getSalesOverview().catch(() => []);
+                expenses = null;
             }
         }
 
@@ -68,7 +64,9 @@ async function getExpenseProfitSummary() {
         );
 
         // Calculate total Zoho Books expenses
-        const totalExpenses = (expenses || []).reduce(
+        const expensesAvailable = expenses !== null;
+       
+        const totalExpenses = expensesAvailable ? expenses.reduce(
             (sum, expense) =>
                 sum + Number(
                     expense.amount ||
@@ -77,16 +75,17 @@ async function getExpenseProfitSummary() {
                     0
                 ),
             0
-        );
+        )
+        : null;
 
         // Profit = revenue - expenses
-        const netProfit = totalRevenue - totalExpenses;
+        const netProfit = expensesAvailable ? totalRevenue - totalExpenses: null;
 
         // Profit margin = profit / revenue * 100
         const profitMargin =
-            totalRevenue > 0
+            expensesAvailable && totalRevenue > 0
                 ? (netProfit / totalRevenue) * 100
-                : 0;
+                : null;
 
         return {
             summary: {
