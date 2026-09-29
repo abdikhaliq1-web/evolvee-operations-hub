@@ -63,7 +63,8 @@ async function getSalesOverview() {
         const url =
             base() +
             '/orders.json?status=any' +
-            '&created_at_min=' + since +
+            '&created_at_min='+ since + 
+            '&financial_status=paid'+
             '&limit=250' +
             '&fields=line_items,total_price';
 
