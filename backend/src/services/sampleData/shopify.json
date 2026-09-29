@@ -1,54 +1,78 @@
 {
   "products": [
-    {
-      "sku": "ER-SER-001",
-      "title": "Radiance Renewal Serum 30ml",
-      "units_sold_30d": 412,
-      "revenue_30d": 14008.00
-    },
-    {
-      "sku": "ER-OIL-002",
-      "title": "Golden Glow Face Oil 25ml",
-      "units_sold_30d": 268,
-      "revenue_30d": 7504.00
-    },
-    {
-      "sku": "ER-CRM-003",
-      "title": "Hydra-Silk Day Cream 50ml",
-      "units_sold_30d": 305,
-      "revenue_30d": 9760.00
-    },
-    {
-      "sku": "ER-CRM-004",
-      "title": "Night Repair Cream 50ml",
-      "units_sold_30d": 84,
-      "revenue_30d": 3192.00
-    },
-    {
-      "sku": "ER-BLM-005",
-      "title": "Soothing Lip Balm 10ml",
-      "units_sold_30d": 530,
-      "revenue_30d": 4240.00
-    },
-    {
-      "sku": "ER-MSK-006",
-      "title": "Clay Detox Mask 75ml",
-      "units_sold_30d": 61,
-      "revenue_30d": 1830.00
-    },
-    {
-      "sku": "ER-TNR-007",
-      "title": "Rosewater Toner 100ml",
-      "units_sold_30d": 149,
-      "revenue_30d": 2682.00
-    },
-    {
-      "sku": "ER-KIT-008",
-      "title": "Starter Ritual Kit",
-      "units_sold_30d": 73,
-      "revenue_30d": 5840.00
-    }
-  ],
+  {
+    "sku": "ER-SER-001",
+    "title": "Radiance Renewal Serum 30ml",
+    "units_sold_30d": 412,
+    "revenue_30d": 14008.00,
+    "variants": [
+      { "variant_id": "ER-SER-001", "quantity": 412 }
+    ]
+  },
+  {
+    "sku": "ER-OIL-002",
+    "title": "Golden Glow Face Oil 25ml",
+    "units_sold_30d": 268,
+    "revenue_30d": 7504.00,
+    "variants": [
+      { "variant_id": "ER-OIL-002", "quantity": 268 }
+    ]
+  },
+  {
+    "sku": "ER-CRM-003",
+    "title": "Hydra-Silk Day Cream 50ml",
+    "units_sold_30d": 305,
+    "revenue_30d": 9760.00,
+    "variants": [
+      { "variant_id": "ER-CRM-003", "quantity": 305 }
+    ]
+  },
+  {
+    "sku": "ER-CRM-004",
+    "title": "Night Repair Cream 50ml",
+    "units_sold_30d": 84,
+    "revenue_30d": 3192.00,
+    "variants": [
+      { "variant_id": "ER-CRM-004", "quantity": 84 }
+    ]
+  },
+  {
+    "sku": "ER-BLM-005",
+    "title": "Soothing Lip Balm 10ml",
+    "units_sold_30d": 530,
+    "revenue_30d": 4240.00,
+    "variants": [
+      { "variant_id": "ER-BLM-005", "quantity": 530 }
+    ]
+  },
+  {
+    "sku": "ER-MSK-006",
+    "title": "Clay Detox Mask 75ml",
+    "units_sold_30d": 61,
+    "revenue_30d": 1830.00,
+    "variants": [
+      { "variant_id": "ER-MSK-006", "quantity": 61 }
+    ]
+  },
+  {
+    "sku": "ER-TNR-007",
+    "title": "Rosewater Toner 100ml",
+    "units_sold_30d": 149,
+    "revenue_30d": 2682.00,
+    "variants": [
+      { "variant_id": "ER-TNR-007", "quantity": 149 }
+    ]
+  },
+  {
+    "sku": "ER-KIT-008",
+    "title": "Starter Ritual Kit",
+    "units_sold_30d": 73,
+    "revenue_30d": 5840.00,
+    "variants": [
+      { "variant_id": "ER-KIT-008", "quantity": 73 }
+    ]
+  }
+],
   "customers": [
     {
       "id": "C-1001",
@@ -137,15 +161,87 @@
     { "month": "2026-06", "revenue": 16351.25 }
   ],
   "inventory": [
-    { "sku": "ER-SER-001", "name": "Radiance Renewal Serum 30ml", "price": 34.00, "stock_on_hand": 34, "reorder_level": 50, "image": "https://placehold.co/300x300?text=Serum" },
-    { "sku": "ER-OIL-002", "name": "Golden Glow Face Oil 25ml", "price": 28.00, "stock_on_hand": 120, "reorder_level": 40, "image": "https://placehold.co/300x300?text=Face+Oil" },
-    { "sku": "ER-CRM-003", "name": "Hydra-Silk Day Cream 50ml", "price": 32.00, "stock_on_hand": 58, "reorder_level": 60, "image": "https://placehold.co/300x300?text=Day+Cream" },
-    { "sku": "ER-CRM-004", "name": "Night Repair Cream 50ml", "price": 38.00, "stock_on_hand": 210, "reorder_level": 40, "image": "https://placehold.co/300x300?text=Night+Cream" },
-    { "sku": "ER-BLM-005", "name": "Soothing Lip Balm 10ml", "price": 8.00, "stock_on_hand": 95, "reorder_level": 100, "image": "https://placehold.co/300x300?text=Lip+Balm" },
-    { "sku": "ER-MSK-006", "name": "Clay Detox Mask 75ml", "price": 30.00, "stock_on_hand": 77, "reorder_level": 30, "image": "https://placehold.co/300x300?text=Detox+Mask" },
-    { "sku": "ER-TNR-007", "name": "Rosewater Toner 100ml", "price": 18.00, "stock_on_hand": 160, "reorder_level": 50, "image": "https://placehold.co/300x300?text=Toner" },
-    { "sku": "ER-KIT-008", "name": "Starter Ritual Kit", "price": 80.00, "stock_on_hand": 12, "reorder_level": 20, "image": "https://placehold.co/300x300?text=Ritual+Kit" }
-  ],
+  {
+    "sku": "ER-SER-001",
+    "variant_id": "ER-SER-001",
+    "name": "Radiance Renewal Serum 30ml",
+    "price": 34.00,
+    "unit_cost": 14.00,
+    "stock_on_hand": 34,
+    "reorder_level": 50,
+    "image": "https://placehold.co/300x300?text=Serum"
+  },
+  {
+    "sku": "ER-OIL-002",
+    "variant_id": "ER-OIL-002",
+    "name": "Golden Glow Face Oil 25ml",
+    "price": 28.00,
+    "unit_cost": 11.00,
+    "stock_on_hand": 120,
+    "reorder_level": 40,
+    "image": "https://placehold.co/300x300?text=Face+Oil"
+  },
+  {
+    "sku": "ER-CRM-003",
+    "variant_id": "ER-CRM-003",
+    "name": "Hydra-Silk Day Cream 50ml",
+    "price": 32.00,
+    "unit_cost": 13.00,
+    "stock_on_hand": 58,
+    "reorder_level": 60,
+    "image": "https://placehold.co/300x300?text=Day+Cream"
+  },
+  {
+    "sku": "ER-CRM-004",
+    "variant_id": "ER-CRM-004",
+    "name": "Night Repair Cream 50ml",
+    "price": 38.00,
+    "unit_cost": 16.00,
+    "stock_on_hand": 210,
+    "reorder_level": 40,
+    "image": "https://placehold.co/300x300?text=Night+Cream"
+  },
+  {
+    "sku": "ER-BLM-005",
+    "variant_id": "ER-BLM-005",
+    "name": "Soothing Lip Balm 10ml",
+    "price": 8.00,
+    "unit_cost": 3.00,
+    "stock_on_hand": 95,
+    "reorder_level": 100,
+    "image": "https://placehold.co/300x300?text=Lip+Balm"
+  },
+  {
+    "sku": "ER-MSK-006",
+    "variant_id": "ER-MSK-006",
+    "name": "Clay Detox Mask 75ml",
+    "price": 30.00,
+    "unit_cost": 12.00,
+    "stock_on_hand": 77,
+    "reorder_level": 30,
+    "image": "https://placehold.co/300x300?text=Detox+Mask"
+  },
+  {
+    "sku": "ER-TNR-007",
+    "variant_id": "ER-TNR-007",
+    "name": "Rosewater Toner 100ml",
+    "price": 18.00,
+    "unit_cost": 7.00,
+    "stock_on_hand": 160,
+    "reorder_level": 50,
+    "image": "https://placehold.co/300x300?text=Toner"
+  },
+  {
+    "sku": "ER-KIT-008",
+    "variant_id": "ER-KIT-008",
+    "name": "Starter Ritual Kit",
+    "price": 80.00,
+    "unit_cost": 35.00,
+    "stock_on_hand": 12,
+    "reorder_level": 20,
+    "image": "https://placehold.co/300x300?text=Ritual+Kit"
+  }
+],
   "reviews": [
     { "id": "gid://shopify/Metaobject/1", "sku": "ER-SER-001", "rating": 5, "author": "Amelia R.", "created_at": "2026-06-28", "state": "published", "body": "Skin looks brighter after two weeks. Absorbs fast, no greasy feel." },
     { "id": "gid://shopify/Metaobject/2", "sku": "ER-SER-001", "rating": 4, "author": "Priya S.", "created_at": "2026-06-15", "state": "published", "body": "Lovely serum, wish the bottle were bigger for the price." },
