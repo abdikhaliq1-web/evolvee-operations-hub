@@ -56,6 +56,8 @@ def process_order_paid(order_data: dict) -> tuple[PartnerSale | None, str]:
             refresh_partner_totals(existing.partner)
         return existing, "already_recorded"
 
+    from partners.shopify.attribution import find_partner_from_order
+
     partner = find_partner_from_order(order_data)
     if not partner:
         return None, "no_partner_attribution"
