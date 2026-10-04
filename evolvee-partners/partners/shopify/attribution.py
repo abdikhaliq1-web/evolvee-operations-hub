@@ -47,6 +47,8 @@ def extract_ref_from_url(url: str) -> Partner | None:
     return None
 
 
+
+
 def find_partner_from_order(order_data: dict) -> Partner | None:
     for discount in order_data.get("discount_codes", []):
         partner = lookup_partner_by_code(discount.get("code", ""))
