@@ -46,7 +46,7 @@ evolvee-partners/
 ### 1. Set up the project
 
 ```powershell
-cd "Evolvee Radiance Internship\evolvee-partners"
+cd "evolvee-partners"
 
 py -m venv venv
 .\venv\Scripts\Activate.ps1
