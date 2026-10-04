@@ -913,6 +913,11 @@ body.page-apply .site-main {
     color: var(--success);
 }
 
+.code-tag--temporary {
+    background: #fff8e1;
+    color: var(--warning);
+}
+
 .code-tag--promo {
     background: #fff8e1;
     color: var(--warning);
