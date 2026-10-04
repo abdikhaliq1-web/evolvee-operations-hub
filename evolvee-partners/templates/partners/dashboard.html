@@ -112,12 +112,17 @@
                     </div>
                 </div>
                 <div class="share-block">
-                    <label>Personal discount code <span class="code-tag code-tag--permanent">Permanent</span></label>
+                    <label>Personal discount code <span class="code-tag code-tag--temporary">Temporary</span></label>
                     <div class="copy-row">
                         <input type="text" readonly value="{{ partner.discount_code }}" id="discount-code">
                         <button type="button" class="btn-copy" data-type="discount_code" data-target="discount-code">Copy</button>
                     </div>
-                    <p class="muted share-note">Unique to you, based on your name — this code does not expire.</p>
+                    <p class="muted share-note">
+                        Issued by the team and can be replaced. Orders that already used this code stay on your totals.
+                        {% if partner.discount_code_expires_at %}
+                        Expires {{ partner.discount_code_expires_at|date:"M j, Y" }}.
+                        {% endif %}
+                    </p>
                 </div>
                 {% if active_promo_codes %}
                 <div class="share-block">

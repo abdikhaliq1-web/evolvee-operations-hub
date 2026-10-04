@@ -61,11 +61,14 @@ def generate_partner_code(exclude_pk=None) -> str:
             return code
     raise ValueError("Unable to generate a unique partner code.")
 
+def discount_code_source(partner: Partner) -> str:
+    """Public name they promote with, not the account login name."""
+    return (partner.social_handle or partner.partner_name or "").strip()
 
 def generate_discount_code(partner_name: str, exclude_pk=None) -> str:
     """
-    Permanent creator discount code from their name, e.g. Jun Jun -> ER-JUNJUN.
-    Does not expire.
+    Personal creator discount code from their name, e.g. Jun Jun -> ER-JUNJUN.
+    Staff can later clear it or issue a replacement.
     """
     letters = _name_letters(partner_name)
     parts = _name_parts(partner_name)
@@ -120,7 +123,9 @@ def assign_creator_codes(partner: Partner) -> bool:
         partner.partner_code = generate_partner_code(exclude_pk=partner.pk)
         updated = True
     if not partner.discount_code:
-        partner.discount_code = generate_discount_code(partner.partner_name, exclude_pk=partner.pk)
+        partner.discount_code = generate_discount_code(
+            discount_code_source(partner), exclude_pk=partner.pk
+            )
         updated = True
     return updated
 
@@ -139,9 +144,9 @@ def lookup_partner_by_discount_code(code: str):
         status=PartnerStatus.APPROVED,
         discount_code__iexact=normalized,
     ).first()
-    if partner:
+    if partner and partner.discount_code_is_valid:
         return partner
-
+    
     now = timezone.now()
     promo = (
         PromoCode.objects.filter(is_active=True, code__iexact=normalized)
