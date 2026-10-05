@@ -31,7 +31,6 @@ class Partner(models.Model):
         unique=True,
         null=True,
         blank=True,
-        editable=False,
         help_text="Personal store discount code. Staff can clear it or issue a new one.",
     )
 
