@@ -9,7 +9,7 @@ from partners.models import Partner, PromoCode
 CODE_PREFIX = "ER-"
 PARTNER_CODE_SUFFIX_LENGTH = 6
 DISCOUNT_CODE_MAX_LENGTH = 16
-DISCOUNT_SUFFIX_MAX = DISCOUNT_CODE_MAX_LENGTH - len(CODE_PREFIX)
+DISCOUNT_SUFFIX_MAX = 8
 
 
 def normalize_code(code: str) -> str:
@@ -65,51 +65,67 @@ def discount_code_source(partner: Partner) -> str:
     """Public name they promote with, not the account login name."""
     return (partner.social_handle or partner.partner_name or "").strip()
 
-def generate_discount_code(partner_name: str, exclude_pk=None) -> str:
-    """
-    Personal creator discount code from their name, e.g. Jun Jun -> ER-JUNJUN.
-    Staff can later clear it or issue a replacement.
-    """
-    letters = _name_letters(partner_name)
-    parts = _name_parts(partner_name)
-    candidates: list[str] = []
+def _split_brand_tokens(source: str) -> list[str]:
+    raw = (source or "").strip().lstrip("@")
+    spaced = re.sub(r"([a-z])([A-Z])", r"\1 \2", raw)
+    spaced = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1 \2", spaced)
+    return [part for part in re.sub(r"[^A-Za-z\s]", " ", spaced).upper().split() if part]
 
-    if parts:
-        first = parts[0]
-        if len(first) >= 3:
-            candidates.append(first[:DISCOUNT_SUFFIX_MAX])
 
-        if len(parts) >= 2:
-            combined = f"{parts[0]}{parts[-1]}"
-            if len(combined) >= 3:
-                candidates.append(combined[:DISCOUNT_SUFFIX_MAX])
+def _letter_code_candidates(source: str) -> list[str]:
+    tokens = _split_brand_tokens(source)
+    letters = _name_letters(source)
+    if not tokens and letters:
+        tokens = [letters]
 
-        full_name = "".join(parts)
-        if len(full_name) >= 3:
-            candidates.append(full_name[:DISCOUNT_SUFFIX_MAX])
+    raw: list[str] = []
+    if len(tokens) == 1:
+        word = tokens[0]
+        raw.append(word[:DISCOUNT_SUFFIX_MAX])
+        if len(word) > DISCOUNT_SUFFIX_MAX:
+            raw.append(word[-DISCOUNT_SUFFIX_MAX:])
+            raw.append((word[:4] + word[-4:])[:DISCOUNT_SUFFIX_MAX])
+        consonants = re.sub(r"[AEIOU]", "", word)
+        if len(consonants) >= 3:
+            raw.append(consonants[:DISCOUNT_SUFFIX_MAX])
+    elif len(tokens) == 2:
+        first, second = tokens
+        raw.append((first[0] + second)[:DISCOUNT_SUFFIX_MAX])  # GREVIEWS
+        raw.append(first[:DISCOUNT_SUFFIX_MAX])
+        raw.append(f"{first[0]}{second[0]}")
+        raw.append(second[:DISCOUNT_SUFFIX_MAX])
+        raw.append((first[:3] + second[:3])[:DISCOUNT_SUFFIX_MAX])
+    else:
+        raw.append(tokens[0][:DISCOUNT_SUFFIX_MAX])  # SPOOKY
+        raw.append("".join(token[0] for token in tokens)[:DISCOUNT_SUFFIX_MAX])  # SSS
+        raw.append((tokens[0][0] + tokens[-1])[:DISCOUNT_SUFFIX_MAX])
+        raw.append("".join(token[:2] for token in tokens)[:DISCOUNT_SUFFIX_MAX])
+        raw.append(tokens[-1][:DISCOUNT_SUFFIX_MAX])
 
-    for length in range(min(len(letters), DISCOUNT_SUFFIX_MAX), 2, -1):
-        candidates.append(letters[:length])
+    raw.append(letters[:DISCOUNT_SUFFIX_MAX])
 
     seen: set[str] = set()
-    for base in candidates:
-        base = base[:DISCOUNT_SUFFIX_MAX]
-        if len(base) < 3 or base in seen:
+    unique: list[str] = []
+    for item in raw:
+        item = re.sub(r"[^A-Z]", "", item)[:DISCOUNT_SUFFIX_MAX]
+        if len(item) < 3 or item in seen:
             continue
-        seen.add(base)
+        seen.add(item)
+        unique.append(item)
+    return unique
+
+def generate_discount_code(partner_name: str, exclude_pk=None) -> str:
+    """
+    Letter-only personal code from the public brand name.
+    Tries distinctive short forms; never appends 2, 3, 4.
+    """
+    for base in _letter_code_candidates(partner_name):
         code = f"{CODE_PREFIX}{base}"
         if not code_is_taken(code, exclude_partner_pk=exclude_pk):
             return code
-
-    base = (parts[0] if parts else letters)[: max(3, DISCOUNT_SUFFIX_MAX - 2)]
-    for suffix_number in range(2, 100):
-        suffix = f"{base}{suffix_number}"[:DISCOUNT_SUFFIX_MAX]
-        code = f"{CODE_PREFIX}{suffix}"
-        if not code_is_taken(code, exclude_partner_pk=exclude_pk):
-            return code
-
-    raise ValueError("Unable to generate a unique discount code.")
-
+    raise ValueError(
+        "Could not build a unique letter-only discount code. Set one in admin."
+    )
 
 def assign_creator_codes(partner: Partner) -> bool:
     """Assign admin ID + personal discount code when a partner is approved."""
