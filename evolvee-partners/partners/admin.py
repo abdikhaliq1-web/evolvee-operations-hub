@@ -132,6 +132,8 @@ class PartnerAdmin(admin.ModelAdmin):
             {
                 "fields": (
                     "commission_percentage",
+                    "commission_tier",
+                    "commission_locked",
                     "payment_method",
                     "payment_details",
                     "payment_details_data",
