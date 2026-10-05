@@ -39,13 +39,13 @@ PAYPAL_FIELDS = _fields(
     },
 )
 
-STRIPE_FIELDS = _fields(
+VENMO_FIELDS = _fields(
     {
-        "name": "stripe_email",
-        "label": "Stripe account email",
-        "type": "email",
+        "name": "venmo_username",
+        "label": "Venmo username",
+        "type": "text",
         "required": True,
-        "placeholder": "you@email.com",
+        "placeholder": "@yourname",
     },
 )
 
@@ -221,8 +221,8 @@ def bank_region_for_country(country_code: str) -> str:
 def get_payment_fields(payment_method: str, country_code: str = "") -> list[FieldSpec]:
     if payment_method == PaymentMethod.PAYPAL:
         return PAYPAL_FIELDS
-    if payment_method == PaymentMethod.STRIPE:
-        return STRIPE_FIELDS
+    if payment_method == PaymentMethod.VENMO:
+        return VENMO_FIELDS
     if payment_method == PaymentMethod.OTHER:
         return OTHER_FIELDS
     if payment_method == PaymentMethod.BANK_TRANSFER:

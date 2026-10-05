@@ -75,6 +75,7 @@ class PartnerAdmin(admin.ModelAdmin):
         "partner_name",
         "partner_code",
         "discount_code",
+        "discount_code_expires_at",
         "social_handle",
         "status",
         "payment_method",
@@ -95,7 +96,6 @@ class PartnerAdmin(admin.ModelAdmin):
     )
     readonly_fields = (
         "partner_code",
-        "discount_code",
         "total_sales",
         "total_commission_earned",
         "qr_preview",
@@ -109,12 +109,14 @@ class PartnerAdmin(admin.ModelAdmin):
         "approve_partners",
         "reject_partners",
         "suspend_partners",
+        "clear_discount_codes",
+        "issue_new_discount_codes",
         "export_partners_excel",
     ]
     change_list_template = "admin/partners/partner/change_list.html"
 
     fieldsets = (
-        (None, {"fields": ("user", "partner_name", "partner_code", "discount_code", "status", "approved_at")}),
+        (None, {"fields": ("user", "partner_name", "partner_code","discount_code", "discount_code_expires_at", "status", "approved_at")}),
         (
             "Partner communication",
             {"fields": ("message_to_partner",), "description": "Optional note sent when status changes on save."},
@@ -209,7 +211,29 @@ class PartnerAdmin(admin.ModelAdmin):
         return self._apply_status_action(
             request, queryset, PartnerStatus.SUSPENDED, "suspended", "suspend_partners"
         )
+    @admin.action(description="Clear personal discount codes")
+    def clear_discount_codes(self, request, queryset):
+        updated = 0
+        for partner in queryset:
+            partner.discount_code = None
+            partner.discount_code_expires_at = None
+            partner.save(update_fields=["discount_code", "discount_code_expires_at"])
+            updated += 1
+        self.message_user(request, f"Cleared personal discount code on {updated} partner(s).")
 
+    @admin.action(description="Issue new personal discount codes")
+    def issue_new_discount_codes(self, request, queryset):
+        from partners.utils.codes import discount_code_source, generate_discount_code
+
+        updated = 0
+        for partner in queryset:
+            partner.discount_code = None
+            partner.discount_code = generate_discount_code(
+                discount_code_source(partner), exclude_pk=partner.pk
+            )
+            partner.save(update_fields=["discount_code"])
+            updated += 1
+        self.message_user(request, f"Issued a new personal discount code on {updated} partner(s).")
     @admin.action(description="Export selected partners to Excel")
     def export_partners_excel(self, request, queryset):
         buffer = build_partners_workbook(queryset)

@@ -32,7 +32,13 @@ class Partner(models.Model):
         null=True,
         blank=True,
         editable=False,
-        help_text="Personal store discount code from the creator's name (permanent, does not expire).",
+        help_text="Personal store discount code. Staff can clear it or issue a new one.",
+    )
+
+    discount_code_expires_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When this personal code stops being valid. Leave blank if no end date is set yet.",
     )
     partner_name = models.CharField(max_length=150)
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="partner_profile")
@@ -86,6 +92,15 @@ class Partner(models.Model):
     @property
     def is_active(self):
         return self.status == PartnerStatus.APPROVED
+
+    @property
+    def discount_code_is_valid(self):
+        if not self.discount_code:
+            return False
+        if not self.discount_code_expires_at:
+            return True
+        from django.utils import timezone
+        return timezone.now() < self.discount_code_expires_at
 
     @property
     def has_payment_details(self):
