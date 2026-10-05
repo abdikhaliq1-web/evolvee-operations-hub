@@ -132,3 +132,36 @@ def get_partner_chart_data(partner: Partner, days: int = 30) -> dict:
         "revenue": [revenue_by_day.get(label, 0) for label in labels],
         "commission": [commission_by_day.get(label, 0) for label in labels],
     }
+
+def apply_commission_tier(partner, tier: str, *, save=True) -> None:
+    from partners.models import TIER_COMMISSION_RATES
+
+    partner.commission_tier = tier
+    partner.commission_percentage = TIER_COMMISSION_RATES[tier]
+    if save:
+        partner.save(update_fields=["commission_tier", "commission_percentage", "updated_at"])
+
+
+def maybe_promote_commission_tier(partner) -> None:
+    from partners.models import CommissionTier
+
+    if partner.commission_locked:
+        return
+
+    conversions = partner.clicks.filter(converted=True).count()
+    revenue = partner.total_sales
+    current = partner.commission_tier
+
+    target = CommissionTier.RISING
+    if revenue >= 2000:
+        target = CommissionTier.AMBASSADOR
+    elif revenue >= 500 or conversions >= 10:
+        target = CommissionTier.ESTABLISHED
+
+    rank = {
+        CommissionTier.RISING: 0,
+        CommissionTier.ESTABLISHED: 1,
+        CommissionTier.AMBASSADOR: 2,
+    }
+    if rank[target] > rank.get(current, 0):
+        apply_commission_tier(partner, target)

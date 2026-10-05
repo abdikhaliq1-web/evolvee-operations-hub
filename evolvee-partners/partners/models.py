@@ -13,9 +13,20 @@ class PartnerStatus(models.TextChoices):
 class PaymentMethod(models.TextChoices):
     PAYPAL = "paypal", "PayPal"
     BANK_TRANSFER = "bank_transfer", "Bank Transfer"
-    STRIPE = "stripe", "Stripe"
+    VENMO = "venmo", "Venmo"
     OTHER = "other", "Other"
 
+class CommissionTier(models.TextChoices):
+    RISING = "rising", "Rising"
+    ESTABLISHED = "established", "Established"
+    AMBASSADOR = "ambassador", "Ambassador"
+
+
+TIER_COMMISSION_RATES = {
+    CommissionTier.RISING: 10,
+    CommissionTier.ESTABLISHED: 12,
+    CommissionTier.AMBASSADOR: 15,
+}
 
 class Partner(models.Model):
     partner_code = models.CharField(
@@ -46,6 +57,19 @@ class Partner(models.Model):
         decimal_places=2,
         default=settings.DEFAULT_COMMISSION_PERCENTAGE,
     )
+
+    commission_tier = models.CharField(
+        max_length=20,
+        choices=CommissionTier.choices,
+        default=CommissionTier.RISING,
+        help_text="Automatically assigned based on total sales. Admins can override.",
+    )
+
+    commission_locked = models.BooleanField(
+        default=False,
+        help_text="If checked, the commission percentage will not auto-update based on sales.",
+    )
+
     status = models.CharField(
         max_length=20,
         choices=PartnerStatus.choices,

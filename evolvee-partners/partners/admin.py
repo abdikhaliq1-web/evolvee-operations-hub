@@ -81,6 +81,8 @@ class PartnerAdmin(admin.ModelAdmin):
         "payment_method",
         "payment_ready",
         "commission_percentage",
+        "commission_tier",
+        "commission_locked",
         "total_commission_earned",
         "created_at",
     )
@@ -156,11 +158,17 @@ class PartnerAdmin(admin.ModelAdmin):
     qr_preview.short_description = "QR Preview"
 
     def save_model(self, request, obj, form, change):
-        if change:
-            previous = Partner.objects.filter(pk=obj.pk).first()
-            if previous and previous.status != obj.status:
-                obj._admin_status_message = form.cleaned_data.get("message_to_partner", "")
+        previous = Partner.objects.filter(pk=obj.pk).first() if change else None
+        if previous and previous.status != obj.status:
+            obj._admin_status_message = form.cleaned_data.get("message_to_partner", "")
+        previous_tier = previous.commission_tier if previous else None
+
         super().save_model(request, obj, form, change)
+
+        if obj.commission_tier != previous_tier:
+            from partners.utils.commission import apply_commission_tier
+
+            apply_commission_tier(obj, obj.commission_tier)
 
     def _apply_status_action(self, request, queryset, new_status, action_label, action_name):
         if "apply" in request.POST:
