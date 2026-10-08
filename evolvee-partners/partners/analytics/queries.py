@@ -133,9 +133,12 @@ def get_partner_leaderboard(limit: int = 10) -> list[dict]:
     partners = (
         Partner.objects.filter(status=PartnerStatus.APPROVED)
         .annotate(
-            click_count=Count("clicks"),
-            conversion_count=Count("clicks", filter=Q(clicks__converted=True)),
-            sale_count=Count("sales", filter=Q(sales__status=SaleStatus.APPROVED)),
+            click_count=Count("clicks", distinct=True),
+            conversion_count=Count(
+                "clicks",
+                filter=Q(clicks__converted=True),
+                distinct=True,
+            ),
         )
         .order_by("-total_commission_earned")[:limit]
     )

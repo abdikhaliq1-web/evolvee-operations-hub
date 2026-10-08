@@ -183,16 +183,19 @@ document.addEventListener("DOMContentLoaded", function () {
         data: {
             labels: chartData.labels,
             datasets: [
-                { label: "Scans", data: chartData.clicks, backgroundColor: "#c9a87c" },
-                { label: "Sales", data: chartData.sales, backgroundColor: "#2d6a4f" },
-                { label: "Revenue ($)", data: chartData.revenue, backgroundColor: "#5c6b73" },
+                { label: "Scans", data: chartData.clicks, backgroundColor: "#c9a87c", yAxisID: "y" },
+                { label: "Sales", data: chartData.sales, backgroundColor: "#2d6a4f", yAxisID: "y" },
+                { label: "Revenue ($)", data: chartData.revenue, backgroundColor: "#5c6b73", yAxisID: "yDollars" },
             ],
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             plugins: { legend: { position: "bottom" } },
-            scales: { y: { beginAtZero: true } },
+            scales: {
+                y: { beginAtZero: true, title: { display: true, text: "Count" } },
+                yDollars: { beginAtZero: true, position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "USD" } },
+            },
         },
     });
 });

@@ -174,19 +174,22 @@ document.addEventListener("DOMContentLoaded", function () {
         data: {
             labels: chartData.labels,
             datasets: [
-                { label: "Scans", data: chartData.clicks, borderColor: "#c9a87c", tension: 0.3 },
-                { label: "Conversions", data: chartData.conversions, borderColor: "#2d6a4f", tension: 0.3 },
-                { label: "Revenue ($)", data: chartData.revenue, borderColor: "#5c6b73", tension: 0.3 },
-                { label: "Commission ($)", data: chartData.commission, borderColor: "#a8895e", tension: 0.3 },
+                { label: "Scans", data: chartData.clicks, borderColor: "#c9a87c", tension: 0.3, yAxisID: "y" },
+                { label: "Conversions", data: chartData.conversions, borderColor: "#2d6a4f", tension: 0.3, yAxisID: "y" },
+                { label: "Revenue ($)", data: chartData.revenue, borderColor: "#5c6b73", tension: 0.3, yAxisID: "yDollars" },
+                { label: "Commission ($)", data: chartData.commission, borderColor: "#a8895e", tension: 0.3, yAxisID: "yDollars" },
             ],
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             plugins: { legend: { position: "bottom" } },
-            scales: { y: { beginAtZero: true } },
+            scales: {
+                y: { beginAtZero: true, title: { display: true, text: "Scans" } },
+                yDollars: { beginAtZero: true, position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "USD" } },
+            },
         },
-    });
+            });
 });
 </script>
 {% endblock %}
