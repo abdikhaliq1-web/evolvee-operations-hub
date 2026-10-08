@@ -41,9 +41,10 @@
 
 <div class="two-col">
     <div class="card chart-card">
-        <h2>Program Trends</h2>
-        <div class="chart-wrap tall">
-            <canvas id="programChart"></canvas>
+    <h2>Program Trends</h2>
+    <p class="muted">Bars are scans and paid orders. The line is revenue from approved sales only.</p>
+    <div class="chart-wrap tall">
+        <canvas id="programChart"></canvas>
         </div>
     </div>
     <div class="card">
@@ -178,23 +179,90 @@ document.addEventListener("DOMContentLoaded", function () {
     const chartData = JSON.parse(document.getElementById("program-chart-data").textContent);
     if (!chartEl) return;
 
+    const labels = (chartData.labels || []).map(function (day) {
+        const date = new Date(day + "T00:00:00");
+        return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+    });
+
     new Chart(chartEl, {
-        type: "bar",
         data: {
-            labels: chartData.labels,
+            labels: labels,
             datasets: [
-                { label: "Scans", data: chartData.clicks, backgroundColor: "#c9a87c", yAxisID: "y" },
-                { label: "Sales", data: chartData.sales, backgroundColor: "#2d6a4f", yAxisID: "y" },
-                { label: "Revenue ($)", data: chartData.revenue, backgroundColor: "#5c6b73", yAxisID: "yDollars" },
+                {
+                    type: "bar",
+                    label: "Scans",
+                    data: chartData.clicks,
+                    backgroundColor: "rgba(201, 168, 124, 0.9)",
+                    yAxisID: "y",
+                    order: 2,
+                    barPercentage: 0.6,
+                    categoryPercentage: 0.55,
+                    maxBarThickness: 32,
+                },
+                {
+                    type: "bar",
+                    label: "Sales",
+                    data: chartData.sales,
+                    backgroundColor: "rgba(45, 106, 79, 0.9)",
+                    yAxisID: "y",
+                    order: 2,
+                    barPercentage: 0.6,
+                    categoryPercentage: 0.55,
+                    maxBarThickness: 32,
+                },
+                {
+                    type: "line",
+                    label: "Revenue",
+                    data: chartData.revenue,
+                    borderColor: "#5c6b73",
+                    backgroundColor: "#5c6b73",
+                    borderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 5,
+                    tension: 0.3,
+                    yAxisID: "yDollars",
+                    order: 1,
+                },
             ],
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { position: "bottom" } },
+            interaction: { mode: "index", intersect: false },
+            plugins: {
+                legend: {
+                    position: "bottom",
+                    labels: { usePointStyle: true, padding: 18, boxWidth: 8 },
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function (ctx) {
+                            if (ctx.dataset.label === "Revenue") {
+                                return "Revenue: $" + Number(ctx.raw).toFixed(2);
+                            }
+                            return ctx.dataset.label + ": " + ctx.raw;
+                        },
+                    },
+                },
+            },
             scales: {
-                y: { beginAtZero: true, title: { display: true, text: "Count" } },
-                yDollars: { beginAtZero: true, position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "USD" } },
+                x: { grid: { display: false } },
+                y: {
+                    beginAtZero: true,
+                    ticks: { stepSize: 1, precision: 0 },
+                    title: { display: true, text: "Scans & sales" },
+                },
+                yDollars: {
+                    beginAtZero: true,
+                    position: "right",
+                    grid: { drawOnChartArea: false },
+                    ticks: {
+                        callback: function (value) {
+                            return "$" + value;
+                        },
+                    },
+                    title: { display: true, text: "Revenue" },
+                },
             },
         },
     });

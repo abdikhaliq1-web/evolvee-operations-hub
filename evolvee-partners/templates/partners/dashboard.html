@@ -76,11 +76,20 @@
         </div>
     </div>
 
-    <div class="card chart-card">
-        <h2 class="section-heading">Performance Overview</h2>
-        <p class="muted">Real-time tracking of scans, conversions, revenue, and commissions.</p>
-        <div class="chart-wrap">
-            <canvas id="performanceChart"></canvas>
+    <div class="two-col">
+        <div class="card chart-card">
+            <h2 class="section-heading">Scans and orders</h2>
+            <p class="muted">How your link is doing day by day.</p>
+            <div class="chart-wrap">
+                <canvas id="activityChart"></canvas>
+            </div>
+        </div>
+        <div class="card chart-card">
+            <h2 class="section-heading">Sales and earnings</h2>
+            <p class="muted">Approved orders only. Cancelled and refunded orders are left out.</p>
+            <div class="chart-wrap">
+                <canvas id="earningsChart"></canvas>
+            </div>
         </div>
     </div>
 
@@ -256,34 +265,63 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-    const chartEl = document.getElementById("performanceChart");
     const chartData = JSON.parse(document.getElementById("chart-data").textContent);
 
-    if (chartEl && chartData.labels.length) {
-        new Chart(chartEl, {
+    function shortDates(days) {
+        return days.map(function (day) {
+            const date = new Date(day + "T00:00:00");
+            return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+        });
+    }
+
+    function drawLineChart(canvasId, datasets, isMoney) {
+        const el = document.getElementById(canvasId);
+        if (!el || !chartData.labels.length) return;
+        new Chart(el, {
             type: "line",
-            data: {
-                labels: chartData.labels,
-                datasets: [
-                    { label: "Scans", data: chartData.clicks, borderColor: "#c9a87c", tension: 0.3, yAxisID: "y" },
-                    { label: "Conversions", data: chartData.conversions, borderColor: "#2d6a4f", tension: 0.3, yAxisID: "y" },
-                    { label: "Revenue ($)", data: chartData.revenue, borderColor: "#5c6b73", tension: 0.3, yAxisID: "yDollars" },
-                    { label: "Commission ($)", data: chartData.commission, borderColor: "#a8895e", tension: 0.3, yAxisID: "yDollars" },
-                ],
-            },
+            data: { labels: shortDates(chartData.labels), datasets: datasets },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { position: "bottom" } },
-            scales: {
-                y: { beginAtZero: true, title: { display: true, text: "Scans" } },
-                yDollars: { beginAtZero: true, position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "USD" } },
+                interaction: { mode: "index", intersect: false },
+                plugins: {
+                    legend: {
+                        position: "bottom",
+                        labels: { usePointStyle: true, padding: 16, boxWidth: 8 },
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function (ctx) {
+                                if (isMoney) {
+                                    return ctx.dataset.label + ": $" + Number(ctx.raw).toFixed(2);
+                                }
+                                return ctx.dataset.label + ": " + ctx.raw;
+                            },
+                        },
+                    },
+                },
+                scales: {
+                    x: { grid: { display: false } },
+                    y: {
+                        beginAtZero: true,
+                        ticks: isMoney
+                            ? { callback: function (value) { return "$" + value; } }
+                            : { stepSize: 1, precision: 0 },
+                    },
+                },
             },
-        },
-    });
-}
+        });
+    }
 
-document.querySelectorAll(".btn-copy")
+    drawLineChart("activityChart", [
+        { label: "Scans", data: chartData.clicks, borderColor: "#c9a87c", tension: 0.3, pointRadius: 4 },
+        { label: "Conversions", data: chartData.conversions, borderColor: "#2d6a4f", tension: 0.3, pointRadius: 4 },
+    ], false);
+
+    drawLineChart("earningsChart", [
+        { label: "Revenue", data: chartData.revenue, borderColor: "#5c6b73", tension: 0.3, pointRadius: 4 },
+        { label: "Commission", data: chartData.commission, borderColor: "#a8895e", tension: 0.3, pointRadius: 4 },
+    ], true);
 
     document.querySelectorAll(".btn-copy").forEach((button) => {
         button.addEventListener("click", () => {
@@ -321,4 +359,5 @@ document.querySelectorAll(".btn-copy")
     }
 });
 </script>
+
 {% endblock %}
