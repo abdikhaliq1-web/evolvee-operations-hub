@@ -357,6 +357,12 @@ class PartnerPayment(models.Model):
 
     class Meta:
         ordering = ["-period_end"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["partner", "period_start", "period_end"],
+                name="unique_partner_payout_period",
+            ),
+        ]
 
     def __str__(self):
         return f"Payment {self.partner.partner_code} — {self.period_start} to {self.period_end}"
@@ -396,6 +402,17 @@ class ShopifyWebhookEvent(models.Model):
     webhook_id = models.CharField(max_length=128, unique=True)
     topic = models.CharField(max_length=64)
     shopify_order_id = models.CharField(max_length=64, blank=True)
+
+    fulfilled_at = models.DateTimeField(
+    null=True,
+    blank=True,
+    help_text="When Shopify marked the order fulfilled. Required before a payout.",
+    )
+    payout_eligible_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="fulfilled_at plus the return window. Sale can enter a monthly batch after this.",
+    )
     partner = models.ForeignKey(
         Partner,
         on_delete=models.SET_NULL,

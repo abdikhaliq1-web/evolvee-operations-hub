@@ -315,10 +315,10 @@ class PartnerNotificationAdmin(admin.ModelAdmin):
 
 @admin.register(PartnerSale)
 class PartnerSaleAdmin(admin.ModelAdmin):
-    list_display = ("order_id", "partner", "customer_email", "total", "commission_amount", "status", "created_at")
+    list_display = ("order_id", "partner", "customer_email", "total", "commission_amount", "status", "created_at", "fulfilled_at", "payout_eligible_at")
     list_filter = ("status",)
     search_fields = ("order_id", "customer_email", "partner__partner_code", "shopify_order_id")
-    readonly_fields = ("commission_amount",)
+    readonly_fields = ("commission_amount", "payout_eligible_at", "fulfilled_at", "created_at", "updated_at")
 
 
 @admin.register(PartnerClick)

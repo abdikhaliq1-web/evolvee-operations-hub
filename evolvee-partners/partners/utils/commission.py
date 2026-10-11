@@ -64,12 +64,12 @@ def get_partner_stats(partner: Partner) -> dict:
     refresh_partner_totals(partner)
     partner.refresh_from_db(fields=["total_sales", "total_commission_earned"])
 
-    pending_commission = as_money(
-        partner.sales.filter(status=SaleStatus.PENDING).aggregate(total=Sum("commission_amount"))["total"]
-    )
-    approved_commission = as_money(
-        partner.sales.filter(status=SaleStatus.APPROVED).aggregate(total=Sum("commission_amount"))["total"]
-    )
+    from partners.utils.payouts import owed_commission
+
+    pending_commission = owed_commission(partner)
+    approved_commission = partner.sales.filter(status=SaleStatus.APPROVED).aggregate(
+        total=Sum("commission_amount")
+    )["total"] or Decimal("0.00")
 
     return {
         "total_clicks": partner.clicks.count(),
