@@ -292,6 +292,16 @@ class PartnerSale(models.Model):
     status = models.CharField(max_length=20, choices=SaleStatus.choices, default=SaleStatus.PENDING)
     products_data = models.JSONField(default=list, blank=True)
     shopify_order_id = models.CharField(max_length=64, blank=True)
+    fulfilled_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When Shopify marked the order fulfilled. Required before a payout.",
+    )
+    payout_eligible_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="fulfilled_at plus the return window. Sale can enter a monthly batch after this.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -402,17 +412,6 @@ class ShopifyWebhookEvent(models.Model):
     webhook_id = models.CharField(max_length=128, unique=True)
     topic = models.CharField(max_length=64)
     shopify_order_id = models.CharField(max_length=64, blank=True)
-
-    fulfilled_at = models.DateTimeField(
-    null=True,
-    blank=True,
-    help_text="When Shopify marked the order fulfilled. Required before a payout.",
-    )
-    payout_eligible_at = models.DateTimeField(
-        null=True,
-        blank=True,
-        help_text="fulfilled_at plus the return window. Sale can enter a monthly batch after this.",
-    )
     partner = models.ForeignKey(
         Partner,
         on_delete=models.SET_NULL,
