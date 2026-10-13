@@ -6,6 +6,13 @@
 [build.environment]
     NODE_VERSION = "20"
 
+#Send API requests to the test Render backend first
+[[redirects]]
+    from = "/api/*"
+    to = "https://evolvee-operations-hub-m00i.onrender.com/api/:splat"
+    status = 200
+    force = true
+
 # Single-page app: send all routes to index.html so React Router works.
 [[redirects]]
     from = "/*"
