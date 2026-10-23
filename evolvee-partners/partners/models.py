@@ -14,6 +14,7 @@ class PaymentMethod(models.TextChoices):
     PAYPAL = "paypal", "PayPal"
     BANK_TRANSFER = "bank_transfer", "Bank Transfer"
     VENMO = "venmo", "Venmo"
+    STRIPE = "stripe", "Stripe"
     OTHER = "other", "Other"
 
 class CommissionTier(models.TextChoices):
