@@ -16,6 +16,7 @@ from django.views.decorators.http import require_POST
 from partners.models import ProgramActivity, ShopifyWebhookEvent
 from partners.shopify.orders import (
     process_order_cancelled,
+    process_order_fulfilled,
     process_order_paid,
     process_refund_created,
 )
