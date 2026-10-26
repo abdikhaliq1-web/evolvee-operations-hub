@@ -231,12 +231,12 @@ def bank_region_for_country(country_code: str) -> str:
 def get_payment_fields(payment_method: str, country_code: str = "") -> list[FieldSpec]:
     if payment_method == PaymentMethod.PAYPAL:
         return PAYPAL_FIELDS
-    if payment_method == PaymentMethod.VENMO:
-        return VENMO_FIELDS
-    if payment_method == PaymentMethod.STRIPE:
-        return STRIPE_FIELDS
-    if payment_method == PaymentMethod.OTHER:
-        return OTHER_FIELDS
+    #if payment_method == PaymentMethod.VENMO:
+        #return VENMO_FIELDS
+    #if payment_method == PaymentMethod.STRIPE:
+        #return STRIPE_FIELDS
+    #if payment_method == PaymentMethod.OTHER:
+        #return OTHER_FIELDS
     if payment_method == PaymentMethod.BANK_TRANSFER:
         region = bank_region_for_country(country_code)
         return BANK_FIELDS_BY_REGION[region]
