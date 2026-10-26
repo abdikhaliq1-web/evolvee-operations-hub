@@ -54,6 +54,13 @@ def payday_for(as_of: date) -> date:
     last = monthrange(as_of.year, as_of.month)[1]
     return date(as_of.year, as_of.month, min(day, last))
 
+def next_payout_on_or_after(when: date) -> date:
+    this = payday_for(when)
+    if when <= this:
+        return this
+    if this.month == 12:
+        return payday_for(date(when.year + 1, 1, 1))
+    return payday_for(date(when.year, when.month))
 
 def previous_payday(payday: date) -> date:
     if payday.month == 1:

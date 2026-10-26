@@ -29,6 +29,11 @@ from partners.utils.qr_generator import ensure_partner_qr
 from partners.utils.geoip import lookup_ip
 from partners.utils.redirects import get_main_website_url
 
+from partners.utils.payouts import next_payout_on_or_after, payout_day
+
+today = timezone.localdate()
+next_payout_date = next_payout_on_or_after(today)
+payout_day_label = payout_day()
 
 def get_client_ip(request):
     forwarded = request.META.get("HTTP_X_FORWARDED_FOR")
