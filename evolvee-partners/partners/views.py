@@ -31,9 +31,6 @@ from partners.utils.redirects import get_main_website_url
 
 from partners.utils.payouts import next_payout_on_or_after, payout_day
 
-today = timezone.localdate()
-next_payout_date = next_payout_on_or_after(today)
-payout_day_label = payout_day()
 
 def get_client_ip(request):
     forwarded = request.META.get("HTTP_X_FORWARDED_FOR")
@@ -227,6 +224,9 @@ def apply(request):
 
 @login_required
 def dashboard(request):
+    today = timezone.localdate()
+    next_payout_date = next_payout_on_or_after(today)
+    payout_day_label = payout_day()
     if is_admin_user(request.user) and not getattr(request.user, "partner_profile", None):
         return redirect("analytics:command_center")
 
@@ -269,6 +269,8 @@ def dashboard(request):
         "tracking_url": partner.tracking_url,
         "active_promo_codes": partner.get_active_promo_codes() if partner.is_active else [],
         "status_notifications": status_notifications,
+        "next_payout_date": next_payout_date,
+        "payout_day_label": payout_day_label,
     }
     return render(request, "partners/dashboard.html", context)
 

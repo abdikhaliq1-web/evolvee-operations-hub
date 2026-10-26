@@ -60,7 +60,7 @@ def next_payout_on_or_after(when: date) -> date:
         return this
     if this.month == 12:
         return payday_for(date(when.year + 1, 1, 1))
-    return payday_for(date(when.year, when.month))
+    return payday_for(date(when.year, when.month + 1, 1))
 
 def previous_payday(payday: date) -> date:
     if payday.month == 1:
