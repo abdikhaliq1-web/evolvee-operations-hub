@@ -179,8 +179,12 @@
                     <span class="muted">Payout schedule</span>
                     <strong>{{ payment_schedule }}</strong>
                 </div>
+                <div>
+                    <span class="muted">Next payout</span>
+                    <strong>{{ next_payout_date|date:"M j, Y" }} ({{ payout_day_label }})</strong>
+                </div>
             </div>
-            <p class="muted">Transparent earning visibility — pending and approved commissions are tracked separately. Payouts are processed on a {{ payment_schedule|lower }} schedule.</p>
+            <p class="muted">Pending and approved commissions are tracked separately. Payouts are processed on a {{ payment_schedule|lower }} schedule.</p>
 
             {% if recent_payments %}
             <h3>Recent Payouts</h3>

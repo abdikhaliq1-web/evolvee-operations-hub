@@ -13,8 +13,9 @@ class PartnerStatus(models.TextChoices):
 class PaymentMethod(models.TextChoices):
     PAYPAL = "paypal", "PayPal"
     BANK_TRANSFER = "bank_transfer", "Bank Transfer"
-    VENMO = "venmo", "Venmo"
-    OTHER = "other", "Other"
+    # VENMO = "venmo", "Venmo"
+    # STRIPE = "stripe", "Stripe"
+    # OTHER = "other", "Other"
 
 class CommissionTier(models.TextChoices):
     RISING = "rising", "Rising"
@@ -292,6 +293,16 @@ class PartnerSale(models.Model):
     status = models.CharField(max_length=20, choices=SaleStatus.choices, default=SaleStatus.PENDING)
     products_data = models.JSONField(default=list, blank=True)
     shopify_order_id = models.CharField(max_length=64, blank=True)
+    fulfilled_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When Shopify marked the order fulfilled. Required before a payout.",
+    )
+    payout_eligible_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="fulfilled_at plus the return window. Sale can enter a monthly batch after this.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -357,6 +368,12 @@ class PartnerPayment(models.Model):
 
     class Meta:
         ordering = ["-period_end"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["partner", "period_start", "period_end"],
+                name="unique_partner_payout_period",
+            ),
+        ]
 
     def __str__(self):
         return f"Payment {self.partner.partner_code} — {self.period_start} to {self.period_end}"

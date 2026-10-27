@@ -13,6 +13,7 @@ WEBHOOK_TOPICS = [
     ("orders/paid", "webhooks/shopify/orders/paid/"),
     ("orders/cancelled", "webhooks/shopify/orders/cancelled/"),
     ("refunds/create", "webhooks/shopify/refunds/create/"),
+    ("orders/fulfilled", "webhooks/shopify/orders/fulfilled/"),
 ]
 
 

@@ -16,6 +16,7 @@ from django.views.decorators.http import require_POST
 from partners.models import ProgramActivity, ShopifyWebhookEvent
 from partners.shopify.orders import (
     process_order_cancelled,
+    process_order_fulfilled,
     process_order_paid,
     process_refund_created,
 )
@@ -128,6 +129,17 @@ def shopify_webhook(request, topic: str):
                 if sale
                 else ShopifyWebhookEvent.Status.SKIPPED
             )
+
+        elif topic == "orders/fulfilled":
+            shopify_order_id = str(payload.get("id", ""))
+            sale, result = process_order_fulfilled(payload)
+            partner = sale.partner if sale else None
+            status = (
+                ShopifyWebhookEvent.Status.PROCESSED
+                if sale and result == "fulfilled"
+                else ShopifyWebhookEvent.Status.SKIPPED
+            )
+
         else:
             return JsonResponse({"status": "unsupported_topic"}, status=404)
     except Exception as exc:
@@ -185,3 +197,8 @@ def orders_cancelled(request):
 @require_POST
 def refunds_create(request):
     return shopify_webhook(request, "refunds/create")
+
+@csrf_exempt
+@require_POST
+def orders_fulfilled(request):
+    return shopify_webhook(request, "orders/fulfilled")

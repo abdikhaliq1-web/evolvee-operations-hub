@@ -147,6 +147,8 @@ PARTNER_PORTAL_PUBLIC_URL = config("PARTNER_PORTAL_PUBLIC_URL", default="").stri
 # Used for logout redirects (partners and admin). Until then, users go to /apply/.
 MAIN_WEBSITE_URL = config("MAIN_WEBSITE_URL", default="PLACEHOLDER_MAIN_WEBSITE_URL")
 PAYMENT_SCHEDULE = config("PAYMENT_SCHEDULE", default="monthly")  # monthly | bi-weekly
+PAYOUT_DAY = config("PAYOUT_DAY", default=15, cast=int)
+PAYOUT_RETURN_WINDOW_DAYS = config("PAYOUT_RETURN_WINDOW_DAYS", default=30, cast=int)
 
 # Shared secret for the Operations Hub read-only summary. Empty disables /api/ops-hub/summary/.
 # Hub auth header is X-Ops-Hub-Key. Partner portal, QR tracking, and Shopify never use this key.

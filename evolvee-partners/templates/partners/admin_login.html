@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 
-{% block title %}Admin Login — Evolvée Radiance{% endblock %}
+{% block title %}Evolvée Radiance Admin View{% endblock %}
 
 {% block content %}
 <section class="page-hero">
     <h1>Admin Login</h1>
-    <p class="muted">Sign in with your staff account to access the Command Center and partnership analytics.</p>
+    <p class="muted">Sign in to access the Evolvée Radiance Partner Program admin dashboard.</p>
 </section>
 
 <section class="auth-card auth-card--admin">
@@ -21,6 +21,6 @@
         </div>
         <button type="submit" class="btn-ghost">Log In to Command Center</button>
     </form>
-    <p class="muted center">Partner or influencer? <a href="{% url 'partners:login' %}">Partner login</a></p>
+    <p class="muted center">Partner? <a href="{% url 'partners:login' %}">Partner login</a></p>
 </section>
 {% endblock %}

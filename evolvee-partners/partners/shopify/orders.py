@@ -1,8 +1,6 @@
 """
 Process Shopify order webhooks into PartnerSale records.
 
-NOT CONNECTED YET — requires PLACEHOLDER_SHOPIFY_* values in .env to be replaced
-with actual integration credentials when store access is given.
 """
 from decimal import Decimal
 
@@ -12,7 +10,7 @@ from partners.models import Partner, PartnerClick, PartnerSale, ProgramActivity,
 from partners.shopify.attribution import find_partner_from_order
 from partners.utils.activity import log_activity
 from partners.utils.commission import calculate_commission, record_partner_sale, refresh_partner_totals
-
+from partners.utils.payouts import mark_sale_fulfilled
 
 def extract_line_items(order_data: dict) -> list[dict]:
     items = []
@@ -147,3 +145,24 @@ def process_refund_created(refund_data: dict) -> tuple[PartnerSale | None, str]:
     sale.save(update_fields=["total", "commission_amount", "updated_at"])
     refresh_partner_totals(sale.partner)
     return sale, "partially_refunded"
+
+def process_order_fulfilled(order_data: dict) -> tuple[PartnerSale | None, str]:
+    shopify_order_id = str(order_data.get("id", ""))
+    if not shopify_order_id:
+        return None, "missing_order_id"
+
+    sale = PartnerSale.objects.filter(shopify_order_id=shopify_order_id).first()
+    if not sale:
+        return None, "sale_not_found"
+
+    if sale.status in (SaleStatus.CANCELLED, SaleStatus.REFUNDED):
+        return sale, "not_eligible"
+
+    fulfilled_at = order_data.get("fulfilled_at")
+    if not fulfilled_at:
+        fulfillments = order_data.get("fulfillments") or []
+        if fulfillments:
+            fulfilled_at = fulfillments[-1].get("created_at") or fulfillments[-1].get("updated_at")
+
+    mark_sale_fulfilled(sale, fulfilled_at)
+    return sale, "fulfilled"
