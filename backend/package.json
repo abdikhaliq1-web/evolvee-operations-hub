@@ -11,7 +11,8 @@
     "db:schema": "node db/applySchema.js",
     "db:seed": "node db/seed.js",
     "db:seed:admin": "node db/seedAdmin.js",
-    "db:reset": "node db/resetSchema.js"
+    "db:reset": "node db/resetSchema.js",
+    "db:migrate:alerts": "node db/migrateAlertsToAwaiting.js"
   },
   "engines": { "node": ">=20" },
   "dependencies": {

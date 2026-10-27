@@ -73,7 +73,7 @@ CREATE TABLE IF NOT EXISTS reorder_alerts (
     product_id   INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
     stock_level  INTEGER NOT NULL,
     threshold    INTEGER NOT NULL,
-    status       TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','acknowledged','resolved')),
+    status       TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','awaiting','resolved')),
     triggered_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     resolved_at  TIMESTAMPTZ
 );
@@ -142,9 +142,9 @@ CREATE TABLE IF NOT EXISTS audit_log (
 -- NULL values don't violate uniqueness, so products without a Shopify id are unaffected.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_products_shopify_iid ON products(shopify_inventory_item_id);
 CREATE INDEX IF NOT EXISTS idx_alerts_status   ON reorder_alerts(status);
--- At most one open/acknowledged alert per product, makes the stock-check insert race-safe.
+-- At most one open/awaiting alert per product, makes the stock-check insert race-safe.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_alerts_one_active
-    ON reorder_alerts(product_id) WHERE status IN ('open', 'acknowledged');
+    ON reorder_alerts(product_id) WHERE status IN ('open', 'awaiting');
 CREATE INDEX IF NOT EXISTS idx_comms_mfr       ON communications(manufacturer_id);
 CREATE INDEX IF NOT EXISTS idx_runs_mfr        ON production_runs(manufacturer_id);
 CREATE INDEX IF NOT EXISTS idx_history_product ON reorder_history(product_id);
