@@ -3,12 +3,12 @@ const { query } = require('../config/db');
 const env = require('../config/env');
 const shopify = require('../services/integrations/shopify');
 
-// Inserts a new alert unless one is already open/acknowledged for this product.
+// Inserts a new alert unless one is already open/awaiting this product.
 async function alertIfLowStock(productId, currentStock, threshold) {
     const result = await query(
         `INSERT INTO reorder_alerts (product_id, stock_level, threshold)
          VALUES ($1, $2, $3)
-         ON CONFLICT (product_id) WHERE status IN ('open', 'acknowledged')
+         ON CONFLICT (product_id) WHERE status IN ('open', 'awaiting')
          DO NOTHING
          RETURNING id`,
         [productId, currentStock, threshold]

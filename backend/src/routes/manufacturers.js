@@ -4,6 +4,7 @@ const { authenticate, requirePermission, requireWrite } = require('../middleware
 const { asyncRoute } = require('../middleware/errorHandler');
 const { validateId } = require('../middleware/validateId');
 const { recordAudit } = require('../services/audit');
+const { reorder, ReorderValidationError } = require("../services/reorder");
 
 const router = express.Router();
 
@@ -224,26 +225,32 @@ router.post('/:id/communications', asyncRoute(async (req, res) => {
 
 router.post('/:id/reorders', asyncRoute(async (req, res) => {
     const body = req.body || {};
-    const productId = body.product_id;
-    const quantityOrdered = body.quantity_ordered;
-    const orderedAt = body.ordered_at;
-    const notes = body.notes;
-
-    if (!productId || !quantityOrdered) {
-        return res.status(400).json({ error: 'product_id and quantity_ordered are required.' });
-    }
-
-    const orderedAtValue = orderedAt || null;
-    const notesValue = notes || null;
-
     const manufacturerId = Number(req.params.id);
-    const sql =
-        'INSERT INTO reorder_history ' +
-        '    (product_id, manufacturer_id, quantity_ordered, ordered_at, notes, created_by) ' +
-        'VALUES ($1, $2, $3, COALESCE($4, CURRENT_DATE), $5, $6) RETURNING *';
+    const userId = req.user.id;
 
-    const result = await query(sql, [productId, manufacturerId, quantityOrdered, orderedAtValue, notesValue, req.user.id]);
-    res.status(201).json({ reorder: result.rows[0] });
+    try {
+        const result = await reorder(body, manufacturerId, userId, { query });
+        const createdReorder = result.reorder;
+
+        await recordAudit(req, {
+            action: 'create',
+            entity: 'reorder',
+            entityId: createdReorder.id,
+            details: {
+                productId : createdReorder.product_id,
+                manufacturerId : createdReorder.manufacturer_id,
+                quantity : createdReorder.quantity_ordered,
+                alertId : null,
+            },
+        });
+
+        return res.status(201).json(result);
+    } catch (err) {
+        if (err instanceof ReorderValidationError) {
+            return res.status(400).json({ error: err.message });
+        }
+        throw err;
+    }
 }));
 
 module.exports = router;

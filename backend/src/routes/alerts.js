@@ -1,16 +1,25 @@
 const express = require('express');
-const { query } = require('../config/db');
+const { query, pool } = require('../config/db');
 const { authenticate, requirePermission, requireWrite, requireRole, ALERT_DELETE_ROLES } = require('../middleware/auth');
 const { asyncRoute } = require('../middleware/errorHandler');
 const { validateId } = require('../middleware/validateId');
 const { runStockCheck } = require('../jobs/stockCheck');
 const { rateLimit } = require('../middleware/rateLimit');
 const { recordAudit } = require('../services/audit');
+const { reorder, ReorderValidationError} = require("../services/reorder");
+const shopify = require('../services/integrations/shopify');
 
 const router = express.Router();
 
 router.use(authenticate, requirePermission('alerts'), requireWrite('alerts'));
 router.param('id', validateId);
+
+class AlertNotFoundError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = 'AlertNotFoundError';
+    }
+}
 
 // Each run calls Shopify. Unthrottled, this is a free way to exhaust the store's
 // API quota from any logged-in account.
@@ -46,29 +55,215 @@ router.get('/', asyncRoute(async (req, res) => {
     res.json({ alerts: result.rows });
 }));
 
-router.patch('/:id', asyncRoute(async (req, res) => {
-    const body = req.body || {};
-    const status = body.status;
+router.get('/:id/reorder-suggestion', asyncRoute(async (req, res) => {
+    const alert_id = req.params.id;
 
-    const allowed = ['open', 'acknowledged', 'resolved'];
-    if (!allowed.includes(status)) {
-        return res.status(400).json({ error: "status must be 'open', 'acknowledged', or 'resolved'." });
-    }
-
-    const id = Number(req.params.id);
-    const sql =
-        'UPDATE reorder_alerts ' +
-        'SET status = $1, ' +
-        "    resolved_at = CASE WHEN $1 = 'resolved' THEN NOW() ELSE NULL END " +
-        'WHERE id = $2 RETURNING *';
-
-    const result = await query(sql, [status, id]);
-
-    const alert = result.rows[0];
+    const requestedAlert = await query(
+        'SELECT ra.stock_level, ra.threshold, m.min_order_quantity, ra.product_id, p.sku ' +
+        'FROM reorder_alerts as ra ' +
+        'LEFT JOIN products AS p ON p.id = ra.product_id ' +
+        'LEFT JOIN manufacturers AS m ON m.id = p.manufacturer_id ' +
+        'WHERE ra.id = $1',
+        [alert_id]);
+    const alert = requestedAlert.rows[0];
 
     if (!alert) {
         return res.status(404).json({ error: 'Alert not found.' });
     }
+
+    const stock = alert.stock_level;
+    const threshold = alert.threshold;
+
+    // Suggests by previous reorder alerts
+    const reorder_history = await query(
+        'SELECT rh.quantity_ordered ' +
+        'FROM reorder_history AS rh ' +
+        'WHERE rh.product_id = $1 ' +
+        'ORDER BY rh.created_at DESC, rh.id DESC',
+        [alert.product_id]);
+
+    for (const reorder of reorder_history.rows) {
+        const pastQuantity = reorder.quantity_ordered;
+
+        if (Number.isInteger(pastQuantity) &&
+            pastQuantity > 0 &&
+            pastQuantity + stock > threshold) {
+            return res.json({ suggestion : pastQuantity });
+        }
+    }
+
+    // Suggests by set manufacturer minimum quantity order
+    const manufacturer_min = alert.min_order_quantity;
+
+    if (Number.isInteger(manufacturer_min) &&
+            (manufacturer_min > 0) &&
+            (manufacturer_min + stock > threshold)) {
+        return res.json({ suggestion : manufacturer_min });
+    }
+
+    // Suggests by past sales
+    try {
+        const sales = await shopify.getSalesOverview();
+        const sale = sales.find((sale) => sale.sku === alert.sku);
+        const units_sold_30d = sale?.units_sold_30d;
+        const roundedQuantity = Math.ceil(units_sold_30d / 10) * 10;
+
+        if (Number.isInteger(roundedQuantity) &&
+            (roundedQuantity > 0) &&
+            (roundedQuantity + stock > threshold)) {
+            return res.json({ suggestion: roundedQuantity });
+        }
+    } catch (err) {
+        await recordAudit(req, {
+            action: 'shopify_lookup_failed',
+            entity: 'shopify',
+            entityId: null,
+            details: { notes: 'Attempted to fetch Shopify data for alerts.js to suggest quantity for reorder.' },
+        });
+    }
+
+    return res.json({ suggestion : Math.max(1, threshold + 1 - stock) });
+}));
+
+class StatusConflictError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = 'StatusConflictError';
+    }
+}
+
+router.post('/:id/reorders', asyncRoute(async (req, res) => {
+    // Atomic process for logging reorder and changing alert status
+    const client = await pool.connect();
+    let alert;
+    let createdReorder;
+
+    try {
+        await client.query('BEGIN');
+
+        // Map alert to product to manufacturer
+        const alert_id = req.params.id;
+        const queryResult = await client.query(
+            'SELECT r.id, r.status, r.product_id, p.manufacturer_id ' +
+            'FROM reorder_alerts AS r ' +
+            'JOIN products AS p ON p.id = r.product_id ' +
+            'WHERE r.id = $1 ' +
+            'FOR UPDATE OF r',
+            [alert_id]);
+        const alertProduct = queryResult.rows[0];
+
+        if (!alertProduct) {
+            throw new AlertNotFoundError("Alert not found.");
+        } else if (alertProduct.status !== "open") {
+            throw new StatusConflictError("Status must be open!");
+        }
+
+        const body = req.body || {};
+        body.product_id = alertProduct.product_id;
+        const manufacturerId = alertProduct.manufacturer_id;
+        const userId = req.user.id;
+
+        // Logs reorder in table used by Manufacturer/Product page
+        const reorderResult = await reorder(body, manufacturerId, userId, client);
+        createdReorder = reorderResult.reorder;
+
+        // Updates alert status
+        const statusAwaiting = await client.query(
+            'UPDATE reorder_alerts ' +
+            "SET status = 'awaiting', " +
+            "   resolved_at = NULL " +
+            'WHERE id = $1 ' +
+            'RETURNING *',
+            [alert_id]);
+
+        alert = statusAwaiting.rows[0];
+
+        if (!alert) {
+            throw new AlertNotFoundError("Alert not found.");
+        }
+
+        await client.query('COMMIT');
+    } catch (err) {
+        try {
+            await client.query('ROLLBACK');
+        } catch (rollbackError) {
+            console.error('X: Rollback failed:', rollbackError.message);
+        }
+
+        if (err instanceof ReorderValidationError) {
+            return res.status(400).json({ error: err.message });
+        } else if (err instanceof AlertNotFoundError) {
+            return res.status(404).json({ error: err.message });
+        } else if (err instanceof  StatusConflictError) {
+            return res.status(409).json({ error: err.message });
+        }
+
+        throw err;
+    } finally {
+        client.release();
+    }
+
+    await recordAudit(req, {
+        action: 'create',
+        entity: 'reorder',
+        entityId: createdReorder.id,
+        details: {
+            productId : createdReorder.product_id,
+            manufacturerId : createdReorder.manufacturer_id,
+            quantity : createdReorder.quantity_ordered,
+            alertId : alert.id,
+        },
+    });
+
+    return res.status(201).json(alert);
+}));
+
+router.patch('/:id', asyncRoute(async (req, res) => {
+    const body = req.body || {};
+    const status = body.status;
+
+    const allowed = ['resolved'];
+    if (!allowed.includes(status)) {
+        return res.status(400).json({ error: "status must be 'resolved'." });
+    }
+
+    const id = Number(req.params.id);
+
+    const updateResult = await query(
+        'UPDATE reorder_alerts ' +
+        "SET status = 'resolved', " +
+        "    resolved_at = NOW() " +
+        "WHERE id = $1 AND status = 'awaiting' " +
+        'RETURNING *',
+        [id]);
+    const alert = updateResult.rows[0];
+
+    if (!alert) {
+        const existingResult = await query(
+            'SELECT id, status ' +
+            'FROM reorder_alerts ' +
+            'WHERE id = $1',
+            [id]);
+
+        const existingAlert = existingResult.rows[0];
+
+        if (!existingAlert) {
+            return res.status(404).json({ error: 'Alert not found.' });
+        }
+
+        return res.status(409).json({
+            error: 'Alert could not be resolved from its current state. Refresh and try again.'
+        });
+    }
+
+    await recordAudit(req, {
+        action: 'update',
+        entity: 'alert',
+        entityId: alert.id,
+        details: {
+            status : alert.status,
+        },
+    });
 
     res.json({ alert: alert });
 }));

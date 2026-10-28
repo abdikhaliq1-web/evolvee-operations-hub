@@ -1,12 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { api, canWrite, canDeleteAlerts } from '../api.js';
-import { useTableView, SortHeader, SearchBox, useFlash } from '../ui.jsx';
+import {useTableView, SortHeader, SearchBox, useFlash, onEnter} from '../ui.jsx';
 
 const STATUS_FILTERS = [
     { value: '', label: 'All' },
     { value: 'open', label: 'Open' },
-    { value: 'acknowledged', label: 'Acknowledged' },
+    { value: 'awaiting', label: 'Awaiting Inventory' },
     { value: 'resolved', label: 'Resolved' },
 ];
 
@@ -14,12 +13,19 @@ export default function Alerts() {
     const [alerts, setAlerts] = useState(null);
     const [error, setError] = useState('');
     const [notice, setNotice] = useFlash(5000);
-    const [checking, setChecking] = useState(false);
     const [filter, setFilter] = useState('');
     const { query, setQuery, view, sort, toggleSort } = useTableView(alerts, ['sku', 'product_name', 'manufacturer']);
     const loadSeq = useRef(0);
     const writable = canWrite('alerts');
     const deletable = canDeleteAlerts();
+    const [selectedAlert, setSelectedAlert] = useState(null);
+    const [reorder, setReorder] = useState({ quantity_ordered: '', notes: '' });
+    const [operation, setOperation] = useState('idle');
+
+    const loadingSuggestion = operation === 'suggesting';
+    const submitting = operation === 'submitting';
+    const busy = operation !== 'idle';
+    const checking = operation === 'checking';
 
     function load() {
         // Guard against a stale response landing after a newer request (e.g. filter changed mid-flight).
@@ -34,6 +40,15 @@ export default function Alerts() {
     }, [filter]);
 
     async function setStatus(id, status) {
+        if (busy) return;
+
+        if (!window.confirm('Confirm that inventory has been received and replenishment is complete.')) {
+            return;
+        }
+
+        setError('');
+        setOperation('resolving');
+
         try {
             await api(`/alerts/${id}`, {
                 method: 'PATCH',
@@ -43,23 +58,39 @@ export default function Alerts() {
             load();
         } catch (e) {
             setError(e.message);
+        } finally {
+            setOperation('idle');
         }
     }
 
     async function remove(id) {
+        if (busy) return;
+
         if (!window.confirm('Delete this alert?')) return;
+
+        setError('');
+        setOperation('removing');
 
         try {
             await api(`/alerts/${id}`, { method: 'DELETE' });
+
+            if (selectedAlert?.id === id) {
+                setSelectedAlert(null);
+                setReorder({ quantity_ordered: "", notes: "" });
+            }
             load();
         } catch (e) {
             setError(e.message);
+        } finally {
+            setOperation('idle');
         }
     }
 
     // Run a stock check now instead of waiting for the scheduled one.
     async function checkNow() {
-        setChecking(true);
+        if (busy) return;
+
+        setOperation('checking');
         setNotice('');
         setError('');
 
@@ -76,19 +107,88 @@ export default function Alerts() {
         } catch (e) {
             setError(e.message);
         } finally {
-            setChecking(false);
+            setOperation('idle');
         }
     }
 
     function statusClass(status) {
         if (status === 'open') return 'low';
-        if (status === 'acknowledged') return 'warn';
+        if (status === 'awaiting') return 'warn';
 
         return 'ok';
     }
 
     function formatDate(value) {
         return new Date(value).toLocaleDateString('en-GB');
+    }
+
+    async function openReorder(alert) {
+        if (busy) return;
+
+        if (selectedAlert?.id !== alert.id) {
+            setReorder({ quantity_ordered: '', notes: '' });
+            setSelectedAlert(alert);
+
+            setError('');
+            setOperation('suggesting');
+
+            try {
+                const data = await api(`/alerts/${alert.id}/reorder-suggestion`);
+                setReorder({quantity_ordered: String(data.suggestion), notes: ''});
+            } catch (e) {
+                setError(e.message);
+            } finally {
+                setOperation('idle');
+            }
+        }
+    }
+
+    function updateReorder(field, value) {
+        setReorder(function (prev) {
+            return { ...prev, [field]: value };
+        });
+    }
+
+    async function submitReorder() {
+        if (busy || !selectedAlert) return;
+
+        // Select and input values are strings; the API wants numbers.
+        const quantity_ordered = Number(reorder.quantity_ordered);
+        const notes = reorder.notes;
+
+        if(!Number.isInteger(quantity_ordered) || quantity_ordered <= 0) {
+            setError('Quantity must be a positive whole number.');
+            return;
+        }
+
+        if (selectedAlert.stock_level + quantity_ordered <= selectedAlert.threshold) {
+            if (!window.confirm(
+                'Based on this alert’s recorded stock, receiving this quantity would leave inventory at or below the recorded low-stock threshold.\n' +
+                'You can still log this reorder.\n' +
+                'If inventory remains low after the alert is resolved, a later stock check may generate another alert.\n' +
+                'Continue?')) {
+                return;
+            }
+        }
+
+        setError('');
+        setOperation('submitting');
+
+        try {
+            await api(`/alerts/${selectedAlert.id}/reorders`, {
+                method: 'POST',
+                body: JSON.stringify({ quantity_ordered, notes }),
+            });
+
+            setSelectedAlert(null);
+            setReorder({ quantity_ordered: '', notes: '' });
+
+            load();
+        } catch (e) {
+            setError(e.message);
+        } finally {
+            setOperation('idle');
+        }
     }
 
     return (
@@ -103,10 +203,51 @@ export default function Alerts() {
 
             {writable && (
                 <p>
-                    <button className="primary" onClick={checkNow} disabled={checking}>
+                    <button className="primary" onClick={checkNow} disabled={busy}>
                         {checking ? 'Checking…' : 'Check stock now'}
                     </button>
                 </p>
+            )}
+
+            {writable && selectedAlert && (
+                <div className="tile">
+                    <h2>Log reorder</h2>
+                    <p>{selectedAlert.product_name}</p>
+                    <p>{selectedAlert.manufacturer}</p>
+                    {loadingSuggestion &&
+                        <p role="status">
+                            Loading suggested quantity…
+                        </p>
+                    }
+                    <input
+                        type="number"
+                        min="1"
+                        placeholder="Quantity"
+                        value={reorder.quantity_ordered}
+                        onChange={(e) => updateReorder('quantity_ordered', e.target.value)}
+                        onKeyDown={onEnter(submitReorder)}
+                        style={{ maxWidth: 120 }}
+                        disabled={busy}
+                    />
+                    <input
+                        type="text"
+                        placeholder="Notes"
+                        value={reorder.notes}
+                        onChange={(e) => updateReorder('notes', e.target.value)}
+                        onKeyDown={onEnter(submitReorder)}
+                        style={{ maxWidth: 120 }}
+                        disabled={busy}
+                    />
+                    <button onClick={submitReorder} disabled={busy}>
+                        {submitting ? 'Logging…' : 'Log Reorder'}
+                    </button>
+                    <button onClick={() => {
+                        setSelectedAlert(null);
+                        setReorder({ quantity_ordered: '', notes: '' });
+                    }} disabled={busy}>
+                        Cancel
+                    </button>
+                </div>
             )}
 
             <div className="toolbar">
@@ -160,30 +301,24 @@ export default function Alerts() {
                                     <td>{alert.manufacturer || '—'}</td>
                                     <td>
                                         <span className={`pill ${statusClass(alert.status)}`}>
-                                            {alert.status}
+                                            {STATUS_FILTERS.find(f => f.value === alert.status)?.label ?? alert.status}
                                         </span>
                                     </td>
                                     <td>
-                                        {alert.manufacturer_id && (
-                                            <Link
-                                                className="link"
-                                                to={`/manufacturers/${alert.manufacturer_id}?reorder_product=${alert.product_id}`}
-                                            >
-                                                Reorder
-                                            </Link>
-                                        )}
-                                        {writable && alert.status === 'open' && (
+                                        {writable && alert.status === 'open' && alert.manufacturer_id && (
                                             <button
                                                 className="link"
-                                                onClick={() => setStatus(alert.id, 'acknowledged')}
+                                                onClick={() => openReorder(alert)}
+                                                disabled={busy}
                                             >
-                                                Acknowledge
+                                                Reorder
                                             </button>
                                         )}
-                                        {writable && alert.status !== 'resolved' && (
+                                        {writable && alert.status === 'awaiting' && (
                                             <button
                                                 className="link"
                                                 onClick={() => setStatus(alert.id, 'resolved')}
+                                                disabled={busy}
                                             >
                                                 Resolve
                                             </button>
@@ -192,6 +327,7 @@ export default function Alerts() {
                                             <button
                                                 className="link"
                                                 onClick={() => remove(alert.id)}
+                                                disabled={busy}
                                             >
                                                 Delete
                                             </button>

@@ -140,3 +140,28 @@ psql $env:DATABASE_URL -c "SELECT COUNT(*) FROM users;"
 Local default (from `.env.example`):
 `postgresql://opshub:opshub_dev_password@localhost:5432/operations_hub`. SSL is auto-detected
 — off for localhost, on for any remote host — so you rarely set `DATABASE_SSL` by hand.
+
+---
+
+## Migrate reorder alerts to `awaiting`
+
+Run this migration on an existing database before starting the updated
+application. Stop existing application instances and stock-check jobs first.
+
+From the backend directory:
+
+```bash
+npm run db:migrate:alerts
+```
+
+The command uses `DATABASE_URL` from the environment or backend `.env`.
+Verify the target database before running it. Use a database role authorized
+to alter `reorder_alerts` and its index; the normal application role may not
+have sufficient permissions.
+
+The migration converts all `acknowledged` alerts to `awaiting` and replaces
+the status constraint and active-alert uniqueness index. Confirm that this
+conversion is appropriate for existing records before deployment.
+
+The migration is transactional and can be rerun against the expected
+already-migrated schema, although it rebuilds the index each time.
